@@ -40,10 +40,10 @@ void* _configure6PWM(long pwm_frequency, float dead_zone, const int pinA_h, cons
   gpio_af_set(TIMER_BLDC_YL_PORT, GPIO_AF_2, TIMER_BLDC_YL_PIN);
 
   // dead time is set in nanoseconds
-  uint32_t dead_time_ns = (float)(1e9f/pwm_freq)*dead_zone;
+  uint32_t dead_time_ns = (float)(1e9f/pwm_frequency)*dead_zone;
 
   // #todo this needs to be converted
-  uint32_t dead_time = __LL_TIM_CALC_DEADTIME(SystemCoreClock, LL_TIM_GetClockDivision(HT->getHandle()->Instance), dead_time_ns);
+  // uint32_t dead_time = __LL_TIM_CALC_DEADTIME(SystemCoreClock, LL_TIM_GetClockDivision(HT->getHandle()->Instance), dead_time_ns);
   
   // Enable timer clock
   rcu_periph_clock_enable(RCU_TIMER_BLDC);
@@ -55,7 +55,7 @@ void* _configure6PWM(long pwm_frequency, float dead_zone, const int pinA_h, cons
   timerBldc_paramter_struct.counterdirection  = TIMER_COUNTER_UP;
   timerBldc_paramter_struct.prescaler 		  = 0;
   timerBldc_paramter_struct.alignedmode 	  = TIMER_COUNTER_CENTER_DOWN;
-  timerBldc_paramter_struct.period			  = 72000000 / pwm_frequency;
+  timerBldc_paramter_struct.period			  = SystemCoreClock / pwm_frequency;
   timerBldc_paramter_struct.clockdivision 	  = TIMER_CKDIV_DIV1;
   timerBldc_paramter_struct.repetitioncounter = 0;
   timer_auto_reload_shadow_disable(TIMER_BLDC);
@@ -138,19 +138,19 @@ void* _configure6PWM(long pwm_frequency, float dead_zone, const int pinA_h, cons
 }
 
 // setting pwm to hardware pin - instead analogWrite()
-void _setPwm(HardwareTimer *HT, uint32_t channel, uint32_t value, int resolution)
+void _setPwm(uint32_t timer_periph, uint16_t channel, uint32_t value, int resolution)
 {  
   // Couldn't find a function for that in Arduino-gd32 ?  
-  timer_channel_output_pulse_value_config(HT->instance,channel,value);
+  timer_channel_output_pulse_value_config(timer_periph,channel,value);
 }
 
 
-void _setSinglePhaseState(PhaseState state, HardwareTimer *HT, int channel1,int channel2) {
+void _setSinglePhaseState(PhaseState state, uint32_t timer_periph, uint16_t channel1,uint16_t channel2) {
   _UNUSED(channel2);
   switch (state) {
     case PhaseState::PHASE_OFF:
-      timer_channel_output_state_config(HT->instance,channel1,TIMER_CCX_DISABLE);
-      timer_channel_complementary_output_state_config(HT->instance,channel1,TIMER_CCXN_DISABLE);
+      timer_channel_output_state_config(timer_periph,channel1,TIMER_CCX_DISABLE);
+      timer_channel_complementary_output_state_config(timer_periph,channel1,TIMER_CCXN_DISABLE);
       break;
     default:
       timer_channel_output_state_config(HT->instance,channel1,TIMER_CCX_ENABLE);

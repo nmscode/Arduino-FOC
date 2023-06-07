@@ -7,11 +7,18 @@
 // default pwm parameters
 #define _PWM_RESOLUTION 12 // 12bit
 #define _PWM_RANGE 4095.0f // 2^12 -1 = 4095
-#define _PWM_FREQUENCY 25000 // 25khz
+#define _PWM_FREQUENCY 16000 // 16khz
 #define _PWM_FREQUENCY_MAX 50000 // 50khz
+
+// 6pwm parameters
+#define _HARDWARE_6PWM 1
+#define _SOFTWARE_6PWM 0
+#define _ERROR_6PWM -1
 
 #define RCU_TIMER_BLDC RCU_TIMER0
 #define TIMER_BLDC TIMER0
+#define DEAD_TIME 60
+
 // Channel G
 #define TIMER_BLDC_CHANNEL_G TIMER_CH_2
 #define TIMER_BLDC_GH_PIN GPIO_PIN_10
@@ -32,7 +39,7 @@
 #define TIMER_BLDC_YL_PORT GPIOB
 
 typedef struct GD32DriverParams {
-  HardwareTimer* timers[6] = {NULL};
+  uint32_t timers[6] = {NULL};
   uint32_t channels[6];
   long pwm_frequency;
   float dead_zone;
