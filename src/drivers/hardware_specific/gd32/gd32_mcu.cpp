@@ -153,8 +153,8 @@ void _setSinglePhaseState(PhaseState state, uint32_t timer_periph, uint16_t chan
       timer_channel_complementary_output_state_config(timer_periph,channel1,TIMER_CCXN_DISABLE);
       break;
     default:
-      timer_channel_output_state_config(HT->instance,channel1,TIMER_CCX_ENABLE);
-      timer_channel_complementary_output_state_config(HT->instance,channel1,TIMER_CCXN_ENABLE);
+      timer_channel_output_state_config(timer_periph,channel1,TIMER_CCX_ENABLE);
+      timer_channel_complementary_output_state_config(timer_periph,channel1,TIMER_CCXN_ENABLE);
       break;
   }
 }
@@ -171,9 +171,9 @@ void _writeDutyCycle6PWM(float dc_a, float dc_b, float dc_c, PhaseState* phase_s
       // phase b
       _setSinglePhaseState(phase_state[1], ((GD32DriverParams*)params)->timers[2], ((GD32DriverParams*)params)->channels[2], ((GD32DriverParams*)params)->channels[3]);
       if(phase_state[1] == PhaseState::PHASE_OFF) dc_b = 0.0f;
-      _setPwm(((STM32DriverParams*)params)->timers[2], ((STM32DriverParams*)params)->channels[2], _PWM_RANGE*dc_b, _PWM_RESOLUTION);
+      _setPwm(((STM32DriverParams*)params)->timers[2], ((GD32DriverParams*)params)->channels[2], _PWM_RANGE*dc_b, _PWM_RESOLUTION);
       // phase c
-      _setSinglePhaseState(phase_state[2], ((GD32DriverParams*)params)->timers[4], ((GD32DriverParams*)params)->channels[4], ((STM32DriverParams*)params)->channels[5]);
+      _setSinglePhaseState(phase_state[2], ((GD32DriverParams*)params)->timers[4], ((GD32DriverParams*)params)->channels[4], ((GD32DriverParams*)params)->channels[5]);
       if(phase_state[2] == PhaseState::PHASE_OFF) dc_c = 0.0f;
       _setPwm(((GD32DriverParams*)params)->timers[4], ((GD32DriverParams*)params)->channels[4], _PWM_RANGE*dc_c, _PWM_RESOLUTION);
       break;
