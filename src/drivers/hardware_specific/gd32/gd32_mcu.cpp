@@ -171,7 +171,7 @@ void _writeDutyCycle6PWM(float dc_a, float dc_b, float dc_c, PhaseState* phase_s
       // phase b
       _setSinglePhaseState(phase_state[1], ((GD32DriverParams*)params)->timers[2], ((GD32DriverParams*)params)->channels[2], ((GD32DriverParams*)params)->channels[3]);
       if(phase_state[1] == PhaseState::PHASE_OFF) dc_b = 0.0f;
-      _setPwm(((STM32DriverParams*)params)->timers[2], ((GD32DriverParams*)params)->channels[2], _PWM_RANGE*dc_b, _PWM_RESOLUTION);
+      _setPwm(((GD32DriverParams*)params)->timers[2], ((GD32DriverParams*)params)->channels[2], _PWM_RANGE*dc_b, _PWM_RESOLUTION);
       // phase c
       _setSinglePhaseState(phase_state[2], ((GD32DriverParams*)params)->timers[4], ((GD32DriverParams*)params)->channels[4], ((GD32DriverParams*)params)->channels[5]);
       if(phase_state[2] == PhaseState::PHASE_OFF) dc_c = 0.0f;
