@@ -4,8 +4,8 @@
 #if defined(_GD32_DEF_)
 
 void* _configure6PWM(long pwm_frequency, float dead_zone, const int pinA_h, const int pinA_l, const int pinB_h, const int pinB_l, const int pinC_h, const int pinC_l){
-  if( !pwm_frequency || !_isset(pwm_frequency) ) pwm_frequency = _PWM_FREQUENCY; // default frequency 25khz
-  else pwm_frequency = _constrain(pwm_frequency, 0, _PWM_FREQUENCY_MAX); // constrain to |%0kHz max
+  if( !pwm_frequency || !_isset(pwm_frequency) ) pwm_frequency = _PWM_FREQUENCY; // default frequency 16khz
+  else pwm_frequency = _constrain(pwm_frequency, 0, _PWM_FREQUENCY_MAX); // constrain to 50kHz max
   // center-aligned frequency is uses two periods
   pwm_frequency *=2;
 
@@ -50,12 +50,13 @@ void* _configure6PWM(long pwm_frequency, float dead_zone, const int pinA_h, cons
 
   // Initial deinitialize of the timer
   timer_deinit(TIMER_BLDC);
-
+  //dbg_periph_enable(DBG_TIMER0_HOLD); // Hold counter of timer 0 during debug
+ 
   // Set up the basic parameter struct for the timer
   timerBldc_paramter_struct.counterdirection  = TIMER_COUNTER_UP;
-  timerBldc_paramter_struct.prescaler 		  = 0;
-  timerBldc_paramter_struct.alignedmode 	  = TIMER_COUNTER_CENTER_DOWN;
-  timerBldc_paramter_struct.period			  = SystemCoreClock / pwm_frequency;
+  timerBldc_paramter_struct.prescaler 		    = 0;
+  timerBldc_paramter_struct.alignedmode 	    = TIMER_COUNTER_CENTER_DOWN;
+  timerBldc_paramter_struct.period			      = SystemCoreClock / pwm_frequency;
   timerBldc_paramter_struct.clockdivision 	  = TIMER_CKDIV_DIV1;
   timerBldc_paramter_struct.repetitioncounter = 0;
   timer_auto_reload_shadow_disable(TIMER_BLDC);
@@ -98,9 +99,9 @@ void* _configure6PWM(long pwm_frequency, float dead_zone, const int pinA_h, cons
   timerBldc_break_parameter_struct.runoffstate      = TIMER_ROS_STATE_ENABLE;
   timerBldc_break_parameter_struct.ideloffstate     = TIMER_IOS_STATE_DISABLE;
   timerBldc_break_parameter_struct.protectmode	    = TIMER_CCHP_PROT_OFF;
-  timerBldc_break_parameter_struct.deadtime 	    = DEAD_TIME; // 0~255
-  timerBldc_break_parameter_struct.breakstate	    = TIMER_BREAK_DISABLE;
-  timerBldc_break_parameter_struct.breakpolarity	= TIMER_BREAK_POLARITY_LOW;
+  timerBldc_break_parameter_struct.deadtime 	      = DEAD_TIME; // 0~255
+  timerBldc_break_parameter_struct.breakstate	      = TIMER_BREAK_DISABLE;
+  timerBldc_break_parameter_struct.breakpolarity	  = TIMER_BREAK_POLARITY_LOW;
   timerBldc_break_parameter_struct.outputautostate 	= TIMER_OUTAUTO_ENABLE;
 
   // Configure the timer with the break parameter struct
@@ -130,6 +131,7 @@ void* _configure6PWM(long pwm_frequency, float dead_zone, const int pinA_h, cons
     .timers = { TIMER_BLDC, TIMER_BLDC, TIMER_BLDC, TIMER_BLDC, TIMER_BLDC, TIMER_BLDC },
     .channels = { TIMER_BLDC_CHANNEL_G, TIMER_BLDC_CHANNEL_G, TIMER_BLDC_CHANNEL_B, TIMER_BLDC_CHANNEL_B, TIMER_BLDC_CHANNEL_Y, TIMER_BLDC_CHANNEL_Y },
     .pwm_frequency  = pwm_frequency,
+    .range          = SystemCoreClock/pwm_frequency,
     .dead_zone      = dead_zone,
     .interface_type = _HARDWARE_6PWM
   };
@@ -167,15 +169,15 @@ void _writeDutyCycle6PWM(float dc_a, float dc_b, float dc_c, PhaseState* phase_s
       // phase a
       _setSinglePhaseState(phase_state[0], ((GD32DriverParams*)params)->timers[0], ((GD32DriverParams*)params)->channels[0], ((GD32DriverParams*)params)->channels[1]);
       if(phase_state[0] == PhaseState::PHASE_OFF) dc_a = 0.0f;
-      _setPwm(((GD32DriverParams*)params)->timers[0], ((GD32DriverParams*)params)->channels[0], _PWM_RANGE*dc_a, _PWM_RESOLUTION);
+      _setPwm(((GD32DriverParams*)params)->timers[0], ((GD32DriverParams*)params)->channels[0], ((GD32DriverParams*)params)->range*dc_a, _PWM_RESOLUTION);
       // phase b
       _setSinglePhaseState(phase_state[1], ((GD32DriverParams*)params)->timers[2], ((GD32DriverParams*)params)->channels[2], ((GD32DriverParams*)params)->channels[3]);
       if(phase_state[1] == PhaseState::PHASE_OFF) dc_b = 0.0f;
-      _setPwm(((GD32DriverParams*)params)->timers[2], ((GD32DriverParams*)params)->channels[2], _PWM_RANGE*dc_b, _PWM_RESOLUTION);
+      _setPwm(((GD32DriverParams*)params)->timers[2], ((GD32DriverParams*)params)->channels[2], ((GD32DriverParams*)params)->range*dc_b, _PWM_RESOLUTION);
       // phase c
       _setSinglePhaseState(phase_state[2], ((GD32DriverParams*)params)->timers[4], ((GD32DriverParams*)params)->channels[4], ((GD32DriverParams*)params)->channels[5]);
       if(phase_state[2] == PhaseState::PHASE_OFF) dc_c = 0.0f;
-      _setPwm(((GD32DriverParams*)params)->timers[4], ((GD32DriverParams*)params)->channels[4], _PWM_RANGE*dc_c, _PWM_RESOLUTION);
+      _setPwm(((GD32DriverParams*)params)->timers[4], ((GD32DriverParams*)params)->channels[4], ((GD32DriverParams*)params)->range*dc_c, _PWM_RESOLUTION);
       break;
   }
   _UNUSED(phase_state);

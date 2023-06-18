@@ -6,7 +6,6 @@
 
 // default pwm parameters
 #define _PWM_RESOLUTION 12 // 12bit
-#define _PWM_RANGE 4095.0f // 2^12 -1 = 4095
 #define _PWM_FREQUENCY 16000 // 16khz
 #define _PWM_FREQUENCY_MAX 50000 // 50khz
 
@@ -42,6 +41,7 @@ typedef struct GD32DriverParams {
   uint32_t timers[6] = {NULL};
   uint32_t channels[6];
   long pwm_frequency;
+  long unsigned int range;
   float dead_zone;
   uint8_t interface_type;
 } GD32DriverParams;
