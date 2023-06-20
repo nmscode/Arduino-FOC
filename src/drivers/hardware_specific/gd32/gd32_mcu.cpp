@@ -25,12 +25,12 @@ void* _configure6PWM(long pwm_frequency, float dead_zone, const int pinA_h, cons
   gpio_mode_set(TIMER_BLDC_BL_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, TIMER_BLDC_BL_PIN);
   gpio_mode_set(TIMER_BLDC_YL_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, TIMER_BLDC_YL_PIN);
 	
-  gpio_output_options_set(TIMER_BLDC_GH_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_2MHZ, TIMER_BLDC_GH_PIN);
-  gpio_output_options_set(TIMER_BLDC_BH_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_2MHZ, TIMER_BLDC_BH_PIN);
-  gpio_output_options_set(TIMER_BLDC_YH_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_2MHZ, TIMER_BLDC_YH_PIN);
-  gpio_output_options_set(TIMER_BLDC_GL_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_2MHZ, TIMER_BLDC_GL_PIN);
-  gpio_output_options_set(TIMER_BLDC_BL_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_2MHZ, TIMER_BLDC_BL_PIN);
-  gpio_output_options_set(TIMER_BLDC_YL_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_2MHZ, TIMER_BLDC_YL_PIN);
+  gpio_output_options_set(TIMER_BLDC_GH_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, TIMER_BLDC_GH_PIN);
+  gpio_output_options_set(TIMER_BLDC_BH_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, TIMER_BLDC_BH_PIN);
+  gpio_output_options_set(TIMER_BLDC_YH_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, TIMER_BLDC_YH_PIN);
+  gpio_output_options_set(TIMER_BLDC_GL_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, TIMER_BLDC_GL_PIN);
+  gpio_output_options_set(TIMER_BLDC_BL_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, TIMER_BLDC_BL_PIN);
+  gpio_output_options_set(TIMER_BLDC_YL_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, TIMER_BLDC_YL_PIN);
 
   gpio_af_set(TIMER_BLDC_GH_PORT, GPIO_AF_2, TIMER_BLDC_GH_PIN);
   gpio_af_set(TIMER_BLDC_BH_PORT, GPIO_AF_2, TIMER_BLDC_BH_PIN);
@@ -59,25 +59,25 @@ void* _configure6PWM(long pwm_frequency, float dead_zone, const int pinA_h, cons
   timerBldc_paramter_struct.period			      = SystemCoreClock / pwm_frequency;
   timerBldc_paramter_struct.clockdivision 	  = TIMER_CKDIV_DIV1;
   timerBldc_paramter_struct.repetitioncounter = 0;
-  timer_auto_reload_shadow_disable(TIMER_BLDC);
-
+  
   // Initialize timer with basic parameter struct
   timer_init(TIMER_BLDC, &timerBldc_paramter_struct);
-
+  timer_auto_reload_shadow_enable(TIMER_BLDC);
+  
   // Deactivate output channel fastmode
   timer_channel_output_fast_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_G, TIMER_OC_FAST_DISABLE);
   timer_channel_output_fast_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_B, TIMER_OC_FAST_DISABLE);
   timer_channel_output_fast_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_Y, TIMER_OC_FAST_DISABLE);
 
   // Deactivate output channel shadow function
-  timer_channel_output_shadow_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_G, TIMER_OC_SHADOW_DISABLE);
-  timer_channel_output_shadow_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_B, TIMER_OC_SHADOW_DISABLE);
-  timer_channel_output_shadow_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_Y, TIMER_OC_SHADOW_DISABLE);
+  timer_channel_output_shadow_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_G, TIMER_OC_SHADOW_ENABLE);
+  timer_channel_output_shadow_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_B, TIMER_OC_SHADOW_ENABLE);
+  timer_channel_output_shadow_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_Y, TIMER_OC_SHADOW_ENABLE);
 
-  // Set output channel PWM type to PWM1
-  timer_channel_output_mode_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_G, TIMER_OC_MODE_PWM1);
-  timer_channel_output_mode_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_B, TIMER_OC_MODE_PWM1);
-  timer_channel_output_mode_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_Y, TIMER_OC_MODE_PWM1);
+  // Set output channel PWM type to PWM0
+  timer_channel_output_mode_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_G, TIMER_OC_MODE_PWM0);
+  timer_channel_output_mode_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_B, TIMER_OC_MODE_PWM0);
+  timer_channel_output_mode_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_Y, TIMER_OC_MODE_PWM0);
 
   // Initialize pulse length with value 0 (pulse duty factor = zero)
   timer_channel_output_pulse_value_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_G, 0);
@@ -102,7 +102,7 @@ void* _configure6PWM(long pwm_frequency, float dead_zone, const int pinA_h, cons
   timerBldc_break_parameter_struct.deadtime 	      = DEAD_TIME; // 0~255
   timerBldc_break_parameter_struct.breakstate	      = TIMER_BREAK_DISABLE;
   timerBldc_break_parameter_struct.breakpolarity	  = TIMER_BREAK_POLARITY_LOW;
-  timerBldc_break_parameter_struct.outputautostate 	= TIMER_OUTAUTO_ENABLE;
+  timerBldc_break_parameter_struct.outputautostate 	= TIMER_OUTAUTO_DISABLE;
 
   // Configure the timer with the break parameter struct
   timer_break_config(TIMER_BLDC, &timerBldc_break_parameter_struct);
@@ -124,6 +124,9 @@ void* _configure6PWM(long pwm_frequency, float dead_zone, const int pinA_h, cons
   //nvic_irq_enable(TIMER0_BRK_UP_TRG_COM_IRQn, 0, 0);
   //timer_interrupt_enable(TIMER_BLDC, TIMER_INT_UP);
 
+  /* TIMER0 primary output function enable */
+  timer_primary_output_config(TIMER0, ENABLE);
+
   // Enable the timer and start PWM
   timer_enable(TIMER_BLDC);
 
@@ -142,21 +145,54 @@ void* _configure6PWM(long pwm_frequency, float dead_zone, const int pinA_h, cons
 // setting pwm to hardware pin - instead analogWrite()
 void _setPwm(uint32_t timer_periph, uint16_t channel, uint32_t value, int resolution)
 {  
-  // Couldn't find a function for that in Arduino-gd32 ?  
+  // Couldn't find a function for that in Arduino-gd32 ?
   timer_channel_output_pulse_value_config(timer_periph,channel,value);
 }
 
 
-void _setSinglePhaseState(PhaseState state, uint32_t timer_periph, uint16_t channel1,uint16_t channel2) {
+uint32_t _isChannelEnabled(uint32_t timer_periph, uint16_t channel)
+{
+  switch (channel)
+  {
+  /* configure TIMER_CH_0 */
+  case TIMER_CH_0:
+    return (TIMER_CHCTL2(timer_periph) & (uint32_t)TIMER_CHCTL2_CH0EN);
+    break;
+  /* configure TIMER_CH_1 */
+  case TIMER_CH_1:
+    return (TIMER_CHCTL2(timer_periph) & (uint32_t)TIMER_CHCTL2_CH1EN);
+    break;
+  /* configure TIMER_CH_2 */
+  case TIMER_CH_2:
+    return (TIMER_CHCTL2(timer_periph) & (uint32_t)TIMER_CHCTL2_CH2EN);
+    break;
+  /* configure TIMER_CH_3 */
+  case TIMER_CH_3:
+    return (TIMER_CHCTL2(timer_periph) & (uint32_t)TIMER_CHCTL2_CH3EN);
+    break;
+  default:
+    return 0xFFFF;    // should never get here. Added to avoid compile warning
+    break;
+  }
+}
+
+void _setSinglePhaseState(PhaseState state, uint32_t timer_periph, uint16_t channel1, uint16_t channel2)
+{
   _UNUSED(channel2);
   switch (state) {
     case PhaseState::PHASE_OFF:
-      timer_channel_output_state_config(timer_periph,channel1,TIMER_CCX_DISABLE);
-      timer_channel_complementary_output_state_config(timer_periph,channel1,TIMER_CCXN_DISABLE);
+      if (_isChannelEnabled(timer_periph, channel1) == 1) // disable timer channel only if enabled to avoid glitches
+      {
+        timer_channel_output_state_config(timer_periph,channel1,TIMER_CCX_DISABLE);
+        timer_channel_complementary_output_state_config(timer_periph,channel1,TIMER_CCXN_DISABLE);
+      }
       break;
     default:
-      timer_channel_output_state_config(timer_periph,channel1,TIMER_CCX_ENABLE);
-      timer_channel_complementary_output_state_config(timer_periph,channel1,TIMER_CCXN_ENABLE);
+      if (_isChannelEnabled(timer_periph, channel1) == 0) // enable timer channel only if disabled to avoid glitches
+      {
+        timer_channel_output_state_config(timer_periph,channel1,TIMER_CCX_ENABLE);
+        timer_channel_complementary_output_state_config(timer_periph,channel1,TIMER_CCXN_ENABLE);
+      }
       break;
   }
 }
