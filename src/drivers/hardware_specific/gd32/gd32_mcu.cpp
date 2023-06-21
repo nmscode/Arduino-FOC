@@ -13,7 +13,7 @@ void* _configure6PWM(long pwm_frequency, float dead_zone, const int pinA_h, cons
   timer_parameter_struct timeoutTimer_paramter_struct;
 
   // PWM timer Parameter structs
-  timer_parameter_struct timerBldc_paramter_struct;	
+  timer_parameter_struct timerBldc_parameter_struct;	
   timer_break_parameter_struct timerBldc_break_parameter_struct;
   timer_oc_parameter_struct timerBldc_oc_parameter_struct;
 
@@ -53,17 +53,37 @@ void* _configure6PWM(long pwm_frequency, float dead_zone, const int pinA_h, cons
   //dbg_periph_enable(DBG_TIMER0_HOLD); // Hold counter of timer 0 during debug
  
   // Set up the basic parameter struct for the timer
-  timerBldc_paramter_struct.counterdirection  = TIMER_COUNTER_UP;
-  timerBldc_paramter_struct.prescaler 		    = 0;
-  timerBldc_paramter_struct.alignedmode 	    = TIMER_COUNTER_CENTER_DOWN;
-  timerBldc_paramter_struct.period			      = SystemCoreClock / pwm_frequency;
-  timerBldc_paramter_struct.clockdivision 	  = TIMER_CKDIV_DIV1;
-  timerBldc_paramter_struct.repetitioncounter = 0;
+  timer_struct_para_init(&timerBldc_parameter_struct);
+  timerBldc_parameter_struct.counterdirection  = TIMER_COUNTER_UP;
+  timerBldc_parameter_struct.prescaler 		     = 0;
+  timerBldc_parameter_struct.alignedmode 	     = TIMER_COUNTER_CENTER_DOWN;
+  timerBldc_parameter_struct.period			       = SystemCoreClock / pwm_frequency;
+  timerBldc_parameter_struct.clockdivision 	   = TIMER_CKDIV_DIV1;
+  timerBldc_parameter_struct.repetitioncounter = 0;
   
   // Initialize timer with basic parameter struct
-  timer_init(TIMER_BLDC, &timerBldc_paramter_struct);
+  timer_init(TIMER_BLDC, &timerBldc_parameter_struct);
   timer_auto_reload_shadow_enable(TIMER_BLDC);
   
+  // Set up the output channel parameter struct
+  timer_channel_output_struct_para_init(&timerBldc_oc_parameter_struct);
+  timerBldc_oc_parameter_struct.outputstate   = TIMER_CCX_DISABLE;
+  timerBldc_oc_parameter_struct.outputnstate  = TIMER_CCXN_DISABLE;
+  timerBldc_oc_parameter_struct.ocpolarity    = TIMER_OC_POLARITY_HIGH;
+  timerBldc_oc_parameter_struct.ocnpolarity 	= TIMER_OCN_POLARITY_HIGH;
+  timerBldc_oc_parameter_struct.ocidlestate 	= TIMER_OC_IDLE_STATE_LOW;
+  timerBldc_oc_parameter_struct.ocnidlestate 	= TIMER_OCN_IDLE_STATE_LOW;
+
+  // Configure all three output channels with the output channel parameter struct
+  timer_channel_output_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_G, &timerBldc_oc_parameter_struct);
+  timer_channel_output_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_B, &timerBldc_oc_parameter_struct);
+  timer_channel_output_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_Y, &timerBldc_oc_parameter_struct);
+  
+  // Set output channel PWM type to PWM0
+  timer_channel_output_mode_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_G, TIMER_OC_MODE_PWM0);
+  timer_channel_output_mode_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_B, TIMER_OC_MODE_PWM0);
+  timer_channel_output_mode_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_Y, TIMER_OC_MODE_PWM0);
+
   // Deactivate output channel fastmode
   timer_channel_output_fast_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_G, TIMER_OC_FAST_DISABLE);
   timer_channel_output_fast_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_B, TIMER_OC_FAST_DISABLE);
@@ -74,28 +94,13 @@ void* _configure6PWM(long pwm_frequency, float dead_zone, const int pinA_h, cons
   timer_channel_output_shadow_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_B, TIMER_OC_SHADOW_ENABLE);
   timer_channel_output_shadow_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_Y, TIMER_OC_SHADOW_ENABLE);
 
-  // Set output channel PWM type to PWM0
-  timer_channel_output_mode_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_G, TIMER_OC_MODE_PWM0);
-  timer_channel_output_mode_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_B, TIMER_OC_MODE_PWM0);
-  timer_channel_output_mode_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_Y, TIMER_OC_MODE_PWM0);
-
   // Initialize pulse length with value 0 (pulse duty factor = zero)
   timer_channel_output_pulse_value_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_G, 0);
   timer_channel_output_pulse_value_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_B, 0);
   timer_channel_output_pulse_value_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_Y, 0);
 
-  // Set up the output channel parameter struct
-  timerBldc_oc_parameter_struct.ocpolarity 		= TIMER_OC_POLARITY_HIGH;
-  timerBldc_oc_parameter_struct.ocnpolarity 	= TIMER_OCN_POLARITY_LOW;
-  timerBldc_oc_parameter_struct.ocidlestate 	= TIMER_OC_IDLE_STATE_LOW;
-  timerBldc_oc_parameter_struct.ocnidlestate 	= TIMER_OCN_IDLE_STATE_HIGH;
-
-  // Configure all three output channels with the output channel parameter struct
-  timer_channel_output_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_G, &timerBldc_oc_parameter_struct);
-  timer_channel_output_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_B, &timerBldc_oc_parameter_struct);
-  timer_channel_output_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_Y, &timerBldc_oc_parameter_struct);
-
   // Set up the break parameter struct
+  timer_break_struct_para_init(&timerBldc_break_parameter_struct);
   timerBldc_break_parameter_struct.runoffstate      = TIMER_ROS_STATE_ENABLE;
   timerBldc_break_parameter_struct.ideloffstate     = TIMER_IOS_STATE_DISABLE;
   timerBldc_break_parameter_struct.protectmode	    = TIMER_CCHP_PROT_OFF;
@@ -107,25 +112,8 @@ void* _configure6PWM(long pwm_frequency, float dead_zone, const int pinA_h, cons
   // Configure the timer with the break parameter struct
   timer_break_config(TIMER_BLDC, &timerBldc_break_parameter_struct);
 
-  // Disable until all channels are set for PWM output
-  timer_disable(TIMER_BLDC);
-
-  // Enable all three channels for PWM output
-  timer_channel_output_state_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_G, TIMER_CCX_ENABLE);
-  timer_channel_output_state_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_B, TIMER_CCX_ENABLE);
-  timer_channel_output_state_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_Y, TIMER_CCX_ENABLE);
-
-  // Enable all three complemenary channels for PWM output
-  timer_channel_complementary_output_state_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_G, TIMER_CCXN_ENABLE);
-  timer_channel_complementary_output_state_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_B, TIMER_CCXN_ENABLE);
-  timer_channel_complementary_output_state_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_Y, TIMER_CCXN_ENABLE);
-
-  // Enable TIMER_INT_UP interrupt and set priority
-  //nvic_irq_enable(TIMER0_BRK_UP_TRG_COM_IRQn, 0, 0);
-  //timer_interrupt_enable(TIMER_BLDC, TIMER_INT_UP);
-
   /* TIMER0 primary output function enable */
-  timer_primary_output_config(TIMER0, ENABLE);
+  timer_primary_output_config(TIMER_BLDC, ENABLE);
 
   // Enable the timer and start PWM
   timer_enable(TIMER_BLDC);
@@ -181,7 +169,7 @@ void _setSinglePhaseState(PhaseState state, uint32_t timer_periph, uint16_t chan
   _UNUSED(channel2);
   switch (state) {
     case PhaseState::PHASE_OFF:
-      if (_isChannelEnabled(timer_periph, channel1) == 1) // disable timer channel only if enabled to avoid glitches
+      if (_isChannelEnabled(timer_periph, channel1) != 1) // disable timer channel only if enabled to avoid glitches
       {
         timer_channel_output_state_config(timer_periph,channel1,TIMER_CCX_DISABLE);
         timer_channel_complementary_output_state_config(timer_periph,channel1,TIMER_CCXN_DISABLE);
