@@ -70,9 +70,9 @@ void* _configure6PWM(long pwm_frequency, float dead_zone, const int pinA_h, cons
   timerBldc_oc_parameter_struct.outputstate   = TIMER_CCX_DISABLE;
   timerBldc_oc_parameter_struct.outputnstate  = TIMER_CCXN_DISABLE;
   timerBldc_oc_parameter_struct.ocpolarity    = TIMER_OC_POLARITY_HIGH;
-  timerBldc_oc_parameter_struct.ocnpolarity 	= TIMER_OCN_POLARITY_HIGH;
+  timerBldc_oc_parameter_struct.ocnpolarity 	= TIMER_OCN_POLARITY_LOW;
   timerBldc_oc_parameter_struct.ocidlestate 	= TIMER_OC_IDLE_STATE_LOW;
-  timerBldc_oc_parameter_struct.ocnidlestate 	= TIMER_OCN_IDLE_STATE_LOW;
+  timerBldc_oc_parameter_struct.ocnidlestate 	= TIMER_OCN_IDLE_STATE_HIGH;
 
   // Configure all three output channels with the output channel parameter struct
   timer_channel_output_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_G, &timerBldc_oc_parameter_struct);
