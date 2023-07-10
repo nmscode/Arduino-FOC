@@ -78,26 +78,31 @@ void* _configure6PWM(long pwm_frequency, float dead_zone, const int pinA_h, cons
   timer_channel_output_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_G, &timerBldc_oc_parameter_struct);
   timer_channel_output_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_B, &timerBldc_oc_parameter_struct);
   timer_channel_output_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_Y, &timerBldc_oc_parameter_struct);
+  timer_channel_output_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_S, &timerBldc_oc_parameter_struct);
   
   // Set output channel PWM type to PWM0
   timer_channel_output_mode_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_G, TIMER_OC_MODE_PWM0);
   timer_channel_output_mode_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_B, TIMER_OC_MODE_PWM0);
   timer_channel_output_mode_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_Y, TIMER_OC_MODE_PWM0);
+  timer_channel_output_mode_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_S, TIMER_OC_MODE_PWM0);
 
   // Deactivate output channel fastmode
   timer_channel_output_fast_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_G, TIMER_OC_FAST_DISABLE);
   timer_channel_output_fast_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_B, TIMER_OC_FAST_DISABLE);
   timer_channel_output_fast_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_Y, TIMER_OC_FAST_DISABLE);
+  timer_channel_output_fast_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_S, TIMER_OC_FAST_DISABLE);
 
   // Deactivate output channel shadow function
   timer_channel_output_shadow_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_G, TIMER_OC_SHADOW_ENABLE);
   timer_channel_output_shadow_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_B, TIMER_OC_SHADOW_ENABLE);
   timer_channel_output_shadow_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_Y, TIMER_OC_SHADOW_ENABLE);
+  timer_channel_output_shadow_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_S, TIMER_OC_SHADOW_ENABLE);
 
   // Initialize pulse length with value 0 (pulse duty factor = zero)
   timer_channel_output_pulse_value_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_G, 0);
   timer_channel_output_pulse_value_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_B, 0);
   timer_channel_output_pulse_value_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_Y, 0);
+  timer_channel_output_pulse_value_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_S, SAMPLING_POINT);
 
   // Set up the break parameter struct
   timer_break_struct_para_init(&timerBldc_break_parameter_struct);
@@ -192,15 +197,15 @@ void _writeDutyCycle6PWM(float dc_a, float dc_b, float dc_c, PhaseState* phase_s
     case _HARDWARE_6PWM:
       // phase a
       _setSinglePhaseState(phase_state[0], ((GD32DriverParams*)params)->timers[0], ((GD32DriverParams*)params)->channels[0], ((GD32DriverParams*)params)->channels[1]);
-      if(phase_state[0] == PhaseState::PHASE_OFF) dc_a = 0.0f;
+      //if(phase_state[0] == PhaseState::PHASE_OFF) dc_a = 0.0f;
       _setPwm(((GD32DriverParams*)params)->timers[0], ((GD32DriverParams*)params)->channels[0], ((GD32DriverParams*)params)->range*dc_a, _PWM_RESOLUTION);
       // phase b
       _setSinglePhaseState(phase_state[1], ((GD32DriverParams*)params)->timers[2], ((GD32DriverParams*)params)->channels[2], ((GD32DriverParams*)params)->channels[3]);
-      if(phase_state[1] == PhaseState::PHASE_OFF) dc_b = 0.0f;
+      //if(phase_state[1] == PhaseState::PHASE_OFF) dc_b = 0.0f;
       _setPwm(((GD32DriverParams*)params)->timers[2], ((GD32DriverParams*)params)->channels[2], ((GD32DriverParams*)params)->range*dc_b, _PWM_RESOLUTION);
       // phase c
       _setSinglePhaseState(phase_state[2], ((GD32DriverParams*)params)->timers[4], ((GD32DriverParams*)params)->channels[4], ((GD32DriverParams*)params)->channels[5]);
-      if(phase_state[2] == PhaseState::PHASE_OFF) dc_c = 0.0f;
+      //if(phase_state[2] == PhaseState::PHASE_OFF) dc_c = 0.0f;
       _setPwm(((GD32DriverParams*)params)->timers[4], ((GD32DriverParams*)params)->channels[4], ((GD32DriverParams*)params)->range*dc_c, _PWM_RESOLUTION);
       break;
   }

@@ -37,6 +37,11 @@
 #define TIMER_BLDC_YL_PIN GPIO_PIN_13
 #define TIMER_BLDC_YL_PORT GPIOB
 
+// Channel for Sampling Point
+#define TIMER_BLDC_CHANNEL_S TIMER_CH_3
+#define SAMPLING_POINT 1
+
+
 typedef struct GD32DriverParams {
   uint32_t timers[6] = {NULL};
   uint32_t channels[6];
