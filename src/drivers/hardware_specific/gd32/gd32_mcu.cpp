@@ -1,5 +1,6 @@
 #include "../../hardware_api.h"
 #include "gd32_mcu.h"
+#include "gd32/PinNames.h"
 
 #if defined(_GD32_DEF_)
 
@@ -17,32 +18,15 @@ void* _configure6PWM(long pwm_frequency, float dead_zone, const int pinA_h, cons
   timer_break_parameter_struct timerBldc_break_parameter_struct;
   timer_oc_parameter_struct timerBldc_oc_parameter_struct;
 
-  // Init PWM output Pins (Configure as alternate functions, push-pull, no pullup)
-  gpio_mode_set(TIMER_BLDC_GH_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, TIMER_BLDC_GH_PIN);
-  gpio_mode_set(TIMER_BLDC_BH_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, TIMER_BLDC_BH_PIN);
-  gpio_mode_set(TIMER_BLDC_YH_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, TIMER_BLDC_YH_PIN);
-  gpio_mode_set(TIMER_BLDC_GL_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, TIMER_BLDC_GL_PIN);
-  gpio_mode_set(TIMER_BLDC_BL_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, TIMER_BLDC_BL_PIN);
-  gpio_mode_set(TIMER_BLDC_YL_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, TIMER_BLDC_YL_PIN);
-  
-  gpio_output_options_set(TIMER_BLDC_GH_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, TIMER_BLDC_GH_PIN);
-  gpio_output_options_set(TIMER_BLDC_BH_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, TIMER_BLDC_BH_PIN);
-  gpio_output_options_set(TIMER_BLDC_YH_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, TIMER_BLDC_YH_PIN);
-  gpio_output_options_set(TIMER_BLDC_GL_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, TIMER_BLDC_GL_PIN);
-  gpio_output_options_set(TIMER_BLDC_BL_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, TIMER_BLDC_BL_PIN);
-  gpio_output_options_set(TIMER_BLDC_YL_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, TIMER_BLDC_YL_PIN);
-  
-  gpio_af_set(TIMER_BLDC_GH_PORT, GPIO_AF_2, TIMER_BLDC_GH_PIN);
-  gpio_af_set(TIMER_BLDC_BH_PORT, GPIO_AF_2, TIMER_BLDC_BH_PIN);
-  gpio_af_set(TIMER_BLDC_YH_PORT, GPIO_AF_2, TIMER_BLDC_YH_PIN);
-  gpio_af_set(TIMER_BLDC_GL_PORT, GPIO_AF_2, TIMER_BLDC_GL_PIN);
-  gpio_af_set(TIMER_BLDC_BL_PORT, GPIO_AF_2, TIMER_BLDC_BL_PIN);
-  gpio_af_set(TIMER_BLDC_YL_PORT, GPIO_AF_2, TIMER_BLDC_YL_PIN);
-  
+  pin_function(DIGITAL_TO_PINNAME(pinA_h), GD_PIN_FUNCTION3(PIN_MODE_AF, PIN_OTYPE_PP, 2));
+  pin_function(DIGITAL_TO_PINNAME(pinA_l), GD_PIN_FUNCTION3(PIN_MODE_AF, PIN_OTYPE_PP, 2));
+  pin_function(DIGITAL_TO_PINNAME(pinB_h), GD_PIN_FUNCTION3(PIN_MODE_AF, PIN_OTYPE_PP, 2));
+  pin_function(DIGITAL_TO_PINNAME(pinB_l), GD_PIN_FUNCTION3(PIN_MODE_AF, PIN_OTYPE_PP, 2));
+  pin_function(DIGITAL_TO_PINNAME(pinC_h), GD_PIN_FUNCTION3(PIN_MODE_AF, PIN_OTYPE_PP, 2));
+  pin_function(DIGITAL_TO_PINNAME(pinC_l), GD_PIN_FUNCTION3(PIN_MODE_AF, PIN_OTYPE_PP, 2));
+
   #ifdef TIMER_BLDC_EMERGENCY_SHUTDOWN_PIN
-    gpio_mode_set(TIMER_BLDC_EMERGENCY_SHUTDOWN_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, TIMER_BLDC_EMERGENCY_SHUTDOWN_PIN);
-    gpio_output_options_set(TIMER_BLDC_EMERGENCY_SHUTDOWN_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, TIMER_BLDC_EMERGENCY_SHUTDOWN_PIN);
-    gpio_af_set(TIMER_BLDC_EMERGENCY_SHUTDOWN_PORT, GPIO_AF_2, TIMER_BLDC_EMERGENCY_SHUTDOWN_PIN);
+    pin_function(DIGITAL_TO_PINNAME(TIMER_BLDC_EMERGENCY_SHUTDOWN_PIN), GD_PIN_FUNCTION3(PIN_MODE_AF, PIN_OTYPE_PP, 2));
   #endif
 
   // dead time is set in nanoseconds
