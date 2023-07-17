@@ -41,6 +41,9 @@
 #define TIMER_BLDC_CHANNEL_S TIMER_CH_3
 #define SAMPLING_POINT 1
 
+// Break input
+#define TIMER_BLDC_EMERGENCY_SHUTDOWN_PIN GPIO_PIN_12
+#define TIMER_BLDC_EMERGENCY_SHUTDOWN_PORT GPIOB
 
 typedef struct GD32DriverParams {
   uint32_t timers[6] = {NULL};

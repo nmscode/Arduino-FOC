@@ -24,20 +24,26 @@ void* _configure6PWM(long pwm_frequency, float dead_zone, const int pinA_h, cons
   gpio_mode_set(TIMER_BLDC_GL_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, TIMER_BLDC_GL_PIN);
   gpio_mode_set(TIMER_BLDC_BL_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, TIMER_BLDC_BL_PIN);
   gpio_mode_set(TIMER_BLDC_YL_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, TIMER_BLDC_YL_PIN);
-	
+  
   gpio_output_options_set(TIMER_BLDC_GH_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, TIMER_BLDC_GH_PIN);
   gpio_output_options_set(TIMER_BLDC_BH_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, TIMER_BLDC_BH_PIN);
   gpio_output_options_set(TIMER_BLDC_YH_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, TIMER_BLDC_YH_PIN);
   gpio_output_options_set(TIMER_BLDC_GL_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, TIMER_BLDC_GL_PIN);
   gpio_output_options_set(TIMER_BLDC_BL_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, TIMER_BLDC_BL_PIN);
   gpio_output_options_set(TIMER_BLDC_YL_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, TIMER_BLDC_YL_PIN);
-
+  
   gpio_af_set(TIMER_BLDC_GH_PORT, GPIO_AF_2, TIMER_BLDC_GH_PIN);
   gpio_af_set(TIMER_BLDC_BH_PORT, GPIO_AF_2, TIMER_BLDC_BH_PIN);
   gpio_af_set(TIMER_BLDC_YH_PORT, GPIO_AF_2, TIMER_BLDC_YH_PIN);
   gpio_af_set(TIMER_BLDC_GL_PORT, GPIO_AF_2, TIMER_BLDC_GL_PIN);
   gpio_af_set(TIMER_BLDC_BL_PORT, GPIO_AF_2, TIMER_BLDC_BL_PIN);
   gpio_af_set(TIMER_BLDC_YL_PORT, GPIO_AF_2, TIMER_BLDC_YL_PIN);
+  
+  #ifdef TIMER_BLDC_EMERGENCY_SHUTDOWN_PIN
+    gpio_mode_set(TIMER_BLDC_EMERGENCY_SHUTDOWN_PORT, GPIO_MODE_AF, GPIO_PUPD_NONE, TIMER_BLDC_EMERGENCY_SHUTDOWN_PIN);
+    gpio_output_options_set(TIMER_BLDC_EMERGENCY_SHUTDOWN_PORT, GPIO_OTYPE_PP, GPIO_OSPEED_50MHZ, TIMER_BLDC_EMERGENCY_SHUTDOWN_PIN);
+    gpio_af_set(TIMER_BLDC_EMERGENCY_SHUTDOWN_PORT, GPIO_AF_2, TIMER_BLDC_EMERGENCY_SHUTDOWN_PIN);
+  #endif
 
   // dead time is set in nanoseconds
   uint32_t dead_time_ns = (float)(1e9f/pwm_frequency)*dead_zone;
@@ -69,10 +75,15 @@ void* _configure6PWM(long pwm_frequency, float dead_zone, const int pinA_h, cons
   timer_channel_output_struct_para_init(&timerBldc_oc_parameter_struct);
   timerBldc_oc_parameter_struct.outputstate   = TIMER_CCX_DISABLE;
   timerBldc_oc_parameter_struct.outputnstate  = TIMER_CCXN_DISABLE;
-  timerBldc_oc_parameter_struct.ocpolarity    = TIMER_OC_POLARITY_HIGH;
-  timerBldc_oc_parameter_struct.ocnpolarity 	= TIMER_OCN_POLARITY_LOW;
-  timerBldc_oc_parameter_struct.ocidlestate 	= TIMER_OC_IDLE_STATE_LOW;
-  timerBldc_oc_parameter_struct.ocnidlestate 	= TIMER_OCN_IDLE_STATE_HIGH;
+  #if SIMPLEFOC_PWM_HIGHSIDE_ACTIVE_HIGH==false
+    timerBldc_oc_parameter_struct.ocpolarity    = TIMER_OC_POLARITY_LOW;
+    timerBldc_oc_parameter_struct.ocidlestate 	= TIMER_OC_IDLE_STATE_HIGH;
+  #endif
+
+  #if SIMPLEFOC_PWM_LOWSIDE_ACTIVE_HIGH==false
+    timerBldc_oc_parameter_struct.ocnpolarity 	= TIMER_OCN_POLARITY_LOW;
+    timerBldc_oc_parameter_struct.ocnidlestate 	= TIMER_OCN_IDLE_STATE_HIGH;
+  #endif
 
   // Configure all three output channels with the output channel parameter struct
   timer_channel_output_config(TIMER_BLDC, TIMER_BLDC_CHANNEL_G, &timerBldc_oc_parameter_struct);
@@ -110,9 +121,12 @@ void* _configure6PWM(long pwm_frequency, float dead_zone, const int pinA_h, cons
   timerBldc_break_parameter_struct.ideloffstate     = TIMER_IOS_STATE_DISABLE;
   timerBldc_break_parameter_struct.protectmode	    = TIMER_CCHP_PROT_OFF;
   timerBldc_break_parameter_struct.deadtime 	      = DEAD_TIME; // 0~255
-  timerBldc_break_parameter_struct.breakstate	      = TIMER_BREAK_DISABLE;
-  timerBldc_break_parameter_struct.breakpolarity	  = TIMER_BREAK_POLARITY_LOW;
   timerBldc_break_parameter_struct.outputautostate 	= TIMER_OUTAUTO_DISABLE;
+  
+  #ifdef TIMER_BLDC_EMERGENCY_SHUTDOWN_PIN
+    timerBldc_break_parameter_struct.breakstate	      = TIMER_BREAK_ENABLE;
+    timerBldc_break_parameter_struct.breakpolarity	  = TIMER_BREAK_POLARITY_LOW;
+  #endif
 
   // Configure the timer with the break parameter struct
   timer_break_config(TIMER_BLDC, &timerBldc_break_parameter_struct);
