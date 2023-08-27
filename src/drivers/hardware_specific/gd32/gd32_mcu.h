@@ -26,7 +26,7 @@
 #define TIMER_BLDC_CHANNEL_Y TIMER_CH_0
 // Channel for Sampling Point
 #define TIMER_BLDC_CHANNEL_S TIMER_CH_3
-#define SAMPLING_POINT 1
+#define SAMPLING_POINT 0.98 // The closer to 1 the closer to the middle of LOW side ON time. Don't use 1, it will overlap with the update event and not trigger
 
 // Break input
 #define TIMER_BLDC_EMERGENCY_SHUTDOWN_PIN PB12
