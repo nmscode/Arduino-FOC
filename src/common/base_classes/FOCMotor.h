@@ -207,6 +207,9 @@ class FOCMotor
     float zero_electric_angle = NOT_SET;//!< absolute zero electric angle - if available
     Direction sensor_direction = Direction::UNKNOWN; //!< default is CW. if sensor_direction == Direction::CCW then direction will be flipped compared to CW. Set to UNKNOWN to set by calibration
 
+    // field weakening
+    float field_weakening = 0; // d axis current target
+
     /**
      * Function providing BLDCMotor class with the 
      * Serial interface and enabling monitoring mode
