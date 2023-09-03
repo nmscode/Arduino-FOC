@@ -39,6 +39,7 @@ enum TorqueControlType : uint8_t {
   voltage            = 0x00,     //!< Torque control using voltage
   dc_current         = 0x01,     //!< Torque control using DC current (one current magnitude)
   foc_current        = 0x02,     //!< torque control using dq currents
+  foc_voltage        = 0x03,     //!< torque control using q axis voltage
 };
 
 /**
