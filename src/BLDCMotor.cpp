@@ -404,7 +404,7 @@ void BLDCMotor::move(float new_target) {
   switch (controller) {
     case MotionControlType::torque:
       if(torque_controller == TorqueControlType::voltage){ // if voltage torque control
-        if(!_isset(phase_resistance))  voltage.q = target;
+        if(!_isset(phase_resistance))  voltage.q = target - (target > deadtime_compensation?deadtime_compensation:0);
         else  voltage.q =  target*phase_resistance + voltage_bemf;
         voltage.q = _constrain(voltage.q, -voltage_limit, voltage_limit);
         // set d-component (lag compensation if known inductance)
@@ -656,6 +656,13 @@ void BLDCMotor::setPhaseVoltage(float Uq, float Ud, float angle_el) {
 
   }
 
+  if (deadtime_compensation > 0){
+    center = driver->voltage_limit/2;
+    Ua += (Ua > center ? 1:-1) * deadtime_compensation;
+    Ub += (Ub > center ? 1:-1) * deadtime_compensation;
+    Uc += (Uc > center ? 1:-1) * deadtime_compensation;
+  }
+
   // set the voltages in driver
   driver->setPwm(Ua, Ub, Uc);
 }
@@ -679,7 +686,7 @@ float BLDCMotor::velocityOpenloop(float target_velocity){
   shaft_velocity = target_velocity;
 
   // use voltage limit or current limit
-  float Uq = voltage_limit;
+  float Uq = voltage_limit - (voltage_limit > deadtime_compensation?deadtime_compensation:0);
   if(_isset(phase_resistance)){
     Uq = _constrain(current_limit*phase_resistance + fabs(voltage_bemf),-voltage_limit, voltage_limit);
     // recalculate the current  
