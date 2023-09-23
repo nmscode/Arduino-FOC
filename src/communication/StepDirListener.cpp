@@ -13,7 +13,8 @@ void StepDirListener::init(){
 }
 
 void StepDirListener::enableInterrupt(void (*doA)()){
-    attachInterrupt(digitalPinToInterrupt(pin_step), doA, polarity);
+    // Arduino-gd32 doesn't like this, need to be fixed
+    //attachInterrupt(digitalPinToInterrupt(pin_step), doA, polarity);
 }
 
 void StepDirListener::attach(float* variable){
