@@ -78,7 +78,7 @@ int _adc_init(Stm32CurrentSenseParams* cs_params, const STM32DriverParams* drive
   sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_1CYCLE_5;
   sConfigInjected.AutoInjectedConv = DISABLE;
   sConfigInjected.InjectedDiscontinuousConvMode = DISABLE;
-  sConfigInjected.InjectedOffset = 1;
+  sConfigInjected.InjectedOffset = 0;
 
   // automating TRGO flag finding - hardware specific
   uint8_t tim_num = 0;
