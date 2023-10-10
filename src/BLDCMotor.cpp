@@ -551,13 +551,13 @@ void BLDCMotor::setPhaseVoltage(float Uq, float Ud, float angle_el) {
       _sincos(angle_el, &_sa, &_ca);
 
       // Inverse park transform
-      Ualpha =  _ca * Ud - _sa * Uq;  // -sin(angle) * Uq;
-      Ubeta =  _sa * Ud + _ca * Uq;    //  cos(angle) * Uq;
+      ABVoltage.alpha =  _ca * Ud - _sa * Uq;  // -sin(angle) * Uq;
+      ABVoltage.beta  =  _sa * Ud + _ca * Uq;    //  cos(angle) * Uq;
 
       // Clarke transform
       Ua = Ualpha;
-      Ub = -0.5f * Ualpha + _SQRT3_2 * Ubeta;
-      Uc = -0.5f * Ualpha - _SQRT3_2 * Ubeta;
+      Ub = -0.5f * ABVoltage.alpha + _SQRT3_2 * ABVoltage.beta;
+      Uc = -0.5f * ABVoltage.alpha - _SQRT3_2 * ABVoltage.beta;
 
       center = driver->voltage_limit/2;
       if (foc_modulation == FOCModulationType::SpaceVectorPWM){

@@ -9,7 +9,7 @@ float CurrentSense::getDCCurrent(float motor_electrical_angle){
     PhaseCurrent_s current = getPhaseCurrents();
     
     // calculate clarke transform
-    ABCurrent_s ABcurrent = getABCurrents(current);
+    ABcurrent = getABCurrents(current);
 
     // current sign - if motor angle not provided the magnitude is always positive
     float sign = 1;
@@ -36,8 +36,27 @@ DQCurrent_s CurrentSense::getFOCCurrents(float angle_el){
     PhaseCurrent_s current = getPhaseCurrents();
 
     // calculate clarke transform
-    ABCurrent_s ABcurrent = getABCurrents(current);
+    ABcurrent = getABCurrents(current);
+
     
+    if (!sense){
+        float Ts = ( _micros(); - timestamp_prev) * 1e-6f;
+        flux_a = constrain( flux_a + (ABVoltage.alpha - phase_resistance * ABCurrent.alpha) * Ts -
+                  phase_inductance * (ABCurrent.alpha - ABCurrent_prev.alpha),-flux_linkage, flux_linkage);
+        flux_b = constrain( flux_b + (ABVoltage.beta - phase_resistance * ABCurrent.beta) * Ts -
+                  phase_inductance * (ABCurrent.beta - ABCurrent_prev.alpha) ,-flux_linkage, flux_linkage);
+        ABCurrent_prev = ABCurrent;
+        observer_timestamp_prev = _micros();
+
+        angle_el = atan2(flux_b,flux_a);
+        // Handle wraparound
+        if (angle_el < 0){
+            angle_el += _2PI 
+        }else if (angle_prev >= _2PI){
+            angle_el -= _2PI;
+        }
+    }
+
     // calculate park transform
     DQCurrent_s return_current = getDQCurrents(ABcurrent,angle_el);
 

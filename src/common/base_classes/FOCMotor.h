@@ -160,6 +160,9 @@ class FOCMotor
     float shaft_angle_sp;//!< current target angle
     DQVoltage_s voltage;//!< current d and q voltage set to the motor
     DQCurrent_s current;//!< current d and q current measured
+    ABCurrent_s ABcurrent;//!< Alpha and Beta current measured 
+    ABCurrent_s ABcurrent_prev;//!< Previous Alpha and Beta current measured for flux observer
+    ABVoltage_s ABVoltage;//!< Alpha and Beta voltage measured 
     float voltage_bemf; //!< estimated backemf voltage (if provided KV constant)
 
     // motor configuration parameters
@@ -171,6 +174,7 @@ class FOCMotor
     int pole_pairs;//!< motor pole pairs number
     float KV_rating; //!< motor KV rating
     float	phase_inductance; //!< motor phase inductance
+    float flux_linkage; //!< motor flux linkage derive from KV_rating and pole_pairs
 
     // limiting variables
     float voltage_limit; //!< Voltage limiting variable - global limit

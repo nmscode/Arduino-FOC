@@ -63,6 +63,13 @@ struct ABCurrent_s
     float beta;
 };
 
+// alpha beta voltage structure
+struct ABVoltage_s
+{
+    float alpha;
+    float beta;
+};
+
 
 /**
  *  Function approximating the sine calculation by using fixed size array
