@@ -552,10 +552,10 @@ void BLDCMotor::setPhaseVoltage(float Uq, float Ud, float angle_el) {
 
       // Inverse park transform
       ABVoltage.alpha =  _ca * Ud - _sa * Uq;  // -sin(angle) * Uq;
-      ABVoltage.beta  =  _sa * Ud + _ca * Uq;    //  cos(angle) * Uq;
+      ABVoltage.beta  =  _sa * Ud + _ca * Uq;  //  cos(angle) * Uq;
 
       // Clarke transform
-      Ua = Ualpha;
+      Ua = ABVoltage.alpha;
       Ub = -0.5f * ABVoltage.alpha + _SQRT3_2 * ABVoltage.beta;
       Uc = -0.5f * ABVoltage.alpha - _SQRT3_2 * ABVoltage.beta;
 
@@ -582,6 +582,13 @@ void BLDCMotor::setPhaseVoltage(float Uq, float Ud, float angle_el) {
 
   }
 
+  if (deadtime_compensation > 0){
+    center = driver->voltage_limit/2;
+    Ua += (Ua > center ? 1:-1) * deadtime_compensation;
+    Ub += (Ub > center ? 1:-1) * deadtime_compensation;
+    Uc += (Uc > center ? 1:-1) * deadtime_compensation;
+  }
+
   // set the voltages in driver
   driver->setPwm(Ua, Ub, Uc);
 }
@@ -606,11 +613,14 @@ float BLDCMotor::velocityOpenloop(float target_velocity){
 
   // use voltage limit or current limit
   float Uq = voltage_limit;
+  /*
   if(_isset(phase_resistance)){
     Uq = _constrain(current_limit*phase_resistance + fabs(voltage_bemf),-voltage_limit, voltage_limit);
     // recalculate the current  
     current.q = (Uq - fabs(voltage_bemf))/phase_resistance;
   }
+  */
+
   // set the maximal allowed voltage (voltage_limit) with the necessary angle
   setPhaseVoltage(Uq,  0, _electricalAngle(shaft_angle, pole_pairs));
 
