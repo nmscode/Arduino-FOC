@@ -346,8 +346,7 @@ void BLDCMotor::loopFOC() {
       else voltage.d = 0;
       break;
     case TorqueControlType::foc_current:
-      //if(!current_sense) return;
-      
+      if(!current_sense) return;
       
       // read current phase currents
       PhaseCurrent = current_sense->getPhaseCurrents();
@@ -368,9 +367,11 @@ void BLDCMotor::loopFOC() {
       observer_timestamp = now;
       }
 
-      // Handle wraparound
-      if (sensorless) electrical_angle = _normalizeAngle(_atan2(flux_b,flux_a)+ zero_electric_angle);
+      // Calculate angle
+      sensorless_electrical_angle = _normalizeAngle(_atan2(flux_b,flux_a) + sensorless_angle_offset);
       
+      if (sensorless) electrical_angle = sensorless_electrical_angle;
+
       // calculate park transform
       current = current_sense->getDQCurrents(ABCurrent,electrical_angle);
 
