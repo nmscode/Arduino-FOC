@@ -379,7 +379,7 @@ void BLDCMotor::loopFOC() {
       current.q = LPF_current_q(current.q);
       current.d = LPF_current_d(current.d);
       // calculate the phase voltages
-      voltage.q = current_sp; //PID_current_q(current_sp - current.q);
+      voltage.q = PID_current_q(current_sp - current.q);
       voltage.d = PID_current_d(-current.d);
       // d voltage - lag compensation - TODO verify
       // if(_isset(phase_inductance)) voltage.d = _constrain( voltage.d - current_sp*shaft_velocity*pole_pairs*phase_inductance, -voltage_limit, voltage_limit);
