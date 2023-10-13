@@ -163,8 +163,9 @@ class FOCMotor
     float voltage_bemf; //!< estimated backemf voltage (if provided KV constant)
     PhaseCurrent_s PhaseCurrent;//!< Phase currents
     ABVoltage_s ABVoltage;//!< Alpha and Beta voltage from inverse park
-    ABCurrent_s ABCurrent;//!< Alpha and Beta current from Clark transform 
-    
+    ABCurrent_s ABCurrent;//!< Alpha and Beta current from Clark transform
+    int8_t sensorless = 0;
+
     // Flux observer
     float flux_linkage; //!< motor flux linkage derive from KV_rating and pole_pairs
     float flux_a;//!< flux a

@@ -135,7 +135,7 @@ void BLDCMotor::enable()
 // FOC initialization function
 int  BLDCMotor::initFOC() {
   int exit_flag = 1;
-
+  
   motor_status = FOCMotorStatus::motor_calibrating;
 
   // align motor if necessary
@@ -346,14 +346,39 @@ void BLDCMotor::loopFOC() {
       else voltage.d = 0;
       break;
     case TorqueControlType::foc_current:
-      if(!current_sense) return;
-      // read dq currents
-      current = current_sense->getFOCCurrents(electrical_angle);
+      //if(!current_sense) return;
+      
+      
+      // read current phase currents
+      PhaseCurrent = current_sense->getPhaseCurrents();
+
+      // calculate clarke transform
+      ABCurrent = current_sense->getABCurrents(PhaseCurrent);
+
+      
+      // Flux linkage observer
+      {
+      float now = _micros();
+      float Ts = ( now - observer_timestamp) * 1e-6f; 
+      flux_a = _constrain( flux_a + (ABVoltage.alpha - phase_resistance * ABCurrent.alpha) * Ts -
+            phase_inductance * (ABCurrent.alpha - ABCurrent_prev.alpha),-flux_linkage, flux_linkage);
+      flux_b = _constrain( flux_b + (ABVoltage.beta - phase_resistance * ABCurrent.beta) * Ts -
+            phase_inductance * (ABCurrent.beta - ABCurrent_prev.beta) ,-flux_linkage, flux_linkage);
+      ABCurrent_prev = ABCurrent;
+      observer_timestamp = now;
+      }
+
+      // Handle wraparound
+      if (sensorless) electrical_angle = _normalizeAngle(_atan2(flux_b,flux_a)+ zero_electric_angle);
+      
+      // calculate park transform
+      current = current_sense->getDQCurrents(ABCurrent,electrical_angle);
+
       // filter values
       current.q = LPF_current_q(current.q);
       current.d = LPF_current_d(current.d);
       // calculate the phase voltages
-      voltage.q = PID_current_q(current_sp - current.q);
+      voltage.q = current_sp; //PID_current_q(current_sp - current.q);
       voltage.d = PID_current_d(-current.d);
       // d voltage - lag compensation - TODO verify
       // if(_isset(phase_inductance)) voltage.d = _constrain( voltage.d - current_sp*shaft_velocity*pole_pairs*phase_inductance, -voltage_limit, voltage_limit);
@@ -613,16 +638,14 @@ float BLDCMotor::velocityOpenloop(float target_velocity){
 
   // use voltage limit or current limit
   float Uq = voltage_limit;
-  /*
   if(_isset(phase_resistance)){
     Uq = _constrain(current_limit*phase_resistance + fabs(voltage_bemf),-voltage_limit, voltage_limit);
     // recalculate the current  
     current.q = (Uq - fabs(voltage_bemf))/phase_resistance;
   }
-  */
 
   // set the maximal allowed voltage (voltage_limit) with the necessary angle
-  setPhaseVoltage(Uq,  0, _electricalAngle(shaft_angle, pole_pairs));
+  setPhaseVoltage(Uq,  0, electrical_angle);
 
   // save timestamp for next call
   open_loop_timestamp = now_us;
