@@ -45,10 +45,13 @@ BLDCMotor::BLDCMotor(int pp, float _R, float _KV, float _inductance)
   // save back emf constant KV = 1/KV
   // 1/sqrt(2) - rms value
   KV_rating = NOT_SET;
-  if (_isset(_KV))
+  if (_isset(_KV)){
     KV_rating = _KV*_SQRT2;
+    if (_isset(pole_pairs)) flux_linkage = 60 / ( _sqrt(3) * _PI * _KV * pole_pairs * 2);
+  }
   // save phase inductance
   phase_inductance = _inductance;
+
 
   // torque control type is voltage by default
   torque_controller = TorqueControlType::voltage;
