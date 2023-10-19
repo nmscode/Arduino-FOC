@@ -649,7 +649,7 @@ float BLDCMotor::velocityOpenloop(float target_velocity){
   }
 
   // set the maximal allowed voltage (voltage_limit) with the necessary angle
-  setPhaseVoltage(Uq,  0, electrical_angle);
+  setPhaseVoltage(Uq,  0, _electricalAngle(shaft_angle, pole_pairs));
 
   // save timestamp for next call
   open_loop_timestamp = now_us;
