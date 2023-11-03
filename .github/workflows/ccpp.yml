@@ -100,4 +100,4 @@ jobs:
           sketch-names: ${{ matrix.sketch-names }}
           sketches-exclude: ${{ matrix.sketches-exclude }}
           build-properties: ${{ toJson(matrix.build-properties) }}
-          extra-arduino-cli-args: ${{ matrix.extra-arduino-cli-args }}
+          
