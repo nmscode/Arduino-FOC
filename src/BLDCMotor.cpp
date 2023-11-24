@@ -46,7 +46,7 @@ BLDCMotor::BLDCMotor(int pp, float _R, float _KV, float _inductance)
   // 1/sqrt(2) - rms value
   KV_rating = NOT_SET;
   if (_isset(_KV))
-    KV_rating = _KV*_SQRT2;
+    KV_rating = _KV;
   // save phase inductance
   phase_inductance = _inductance;
 
