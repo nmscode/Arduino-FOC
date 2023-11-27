@@ -52,6 +52,8 @@ BLDCMotor::BLDCMotor(int pp, float _R, float _KV, float _inductance)
 
   // torque control type is voltage by default
   torque_controller = TorqueControlType::voltage;
+
+  hfi_enabled=true;
 }
 
 
@@ -105,6 +107,8 @@ void BLDCMotor::init() {
   enable();
   _delay(500);
   motor_status = FOCMotorStatus::motor_uncalibrated;
+  hfi_state=1;
+  prev_hfi_time=micros();
 }
 
 
@@ -363,7 +367,13 @@ void BLDCMotor::loopFOC() {
       SIMPLEFOC_DEBUG("MOT: no torque control selected!");
       break;
   }
-
+  if(hfi_enabled){
+    if((micros()-prev_hfi_time)>=((1.0/hfi_frequency)/2.0)){
+      hfi_state*=-1;
+      prev_hfi_time=micros();
+    }
+    voltage.d+=hfi_state*hfi_voltage;
+  }
   // set the phase voltage - FOC heart function :)
   setPhaseVoltage(voltage.q, voltage.d, electrical_angle);
 }
