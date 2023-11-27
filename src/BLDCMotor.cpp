@@ -368,7 +368,7 @@ void BLDCMotor::loopFOC() {
       break;
   }
   if(hfi_enabled){
-    if((micros()-prev_hfi_time)>=((1.0/hfi_frequency)/2.0)){
+    if((micros()-prev_hfi_time)>=((1000000.0/hfi_frequency)/2.0)){
       hfi_state*=-1;
       prev_hfi_time=micros();
     }
