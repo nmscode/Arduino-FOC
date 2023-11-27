@@ -106,9 +106,13 @@ void BLDCMotor::init() {
   SIMPLEFOC_DEBUG("MOT: Enable driver.");
   enable();
   _delay(500);
+
+  //Initialize HFI variables
   motor_status = FOCMotorStatus::motor_uncalibrated;
   hfi_state=1;
   prev_hfi_time=micros();
+  hfi_voltage=0.05*voltage_limit;
+  hfi_frequency=1000;
 }
 
 
