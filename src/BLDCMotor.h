@@ -72,7 +72,7 @@ class BLDCMotor: public FOCMotor
     float	Ualpha, Ubeta; //!< Phase voltages U alpha and U beta used for inverse Park and Clarke transform
     bool hfi_enabled;
     float hfi_voltage;
-    long hfi_frequency;
+    float hfi_frequency;
     int hfi_state;
     long prev_hfi_time;
   /**
