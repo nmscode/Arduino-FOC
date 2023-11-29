@@ -73,6 +73,7 @@ class BLDCMotor: public FOCMotor
     bool hfi_enabled;
     float hfi_voltage;
     float hfi_frequency;
+    float hfi_dt;
     int hfi_state;
     long prev_hfi_time;
   /**
