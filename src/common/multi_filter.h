@@ -18,7 +18,7 @@ public:
      * @param q - Filter resonance
      */
     MultiFilter(float Tf, float q=0.707f);
-    ~MultiFilter() = default;
+    MultiFilter() = default;
 
     enum returnType {
         MULTI_FILTER_LOWPASS,
