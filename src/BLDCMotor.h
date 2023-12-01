@@ -68,14 +68,6 @@ class BLDCMotor: public FOCMotor
      */
     void move(float target = NOT_SET) override;
     
-    float Ua, Ub, Uc;//!< Current phase voltages Ua,Ub and Uc set to motor
-    float	Ualpha, Ubeta; //!< Phase voltages U alpha and U beta used for inverse Park and Clarke transform
-    bool hfi_enabled;
-    float hfi_voltage;
-    float hfi_frequency;
-    float hfi_dt;
-    int hfi_state;
-    long prev_hfi_time;
   /**
     * Method using FOC to set Uq to the motor at the optimal angle
     * Heart of the FOC algorithm
