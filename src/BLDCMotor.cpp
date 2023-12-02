@@ -54,6 +54,7 @@ BLDCMotor::BLDCMotor(int pp, float _R, float _KV, float _inductance)
   torque_controller = TorqueControlType::voltage;
 
   hfi_enabled=true;
+  hfi_injection_started=false;
 }
 
 
@@ -379,6 +380,7 @@ void BLDCMotor::loopFOC() {
       hfi_dt=now;
     }
     voltage.d+=hfi_state*hfi_voltage;
+    hfi_injection_started=true;
   }
   // set the phase voltage - FOC heart function :)
   setPhaseVoltage(voltage.q, voltage.d, electrical_angle);

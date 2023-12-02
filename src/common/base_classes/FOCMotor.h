@@ -185,6 +185,7 @@ class FOCMotor
     float hfi_dt;
     int hfi_state;
     long prev_hfi_time;
+    bool hfi_injection_started;
 
     // motor status vairables
     int8_t enabled = 0;//!< enabled or disabled motor flag
