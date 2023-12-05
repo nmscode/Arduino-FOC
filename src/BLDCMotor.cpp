@@ -110,7 +110,7 @@ void BLDCMotor::init() {
 
   //Initialize HFI variables
   motor_status = FOCMotorStatus::motor_uncalibrated;
-  hfi_state=1;
+  hfi_state=0.0f;
   prev_hfi_time=micros();
   hfi_voltage=0.05*voltage_limit;
   hfi_frequency=1000;
@@ -373,13 +373,18 @@ void BLDCMotor::loopFOC() {
       break;
   }
   if(hfi_enabled){
-    float now=micros()-prev_hfi_time;
-    if((now)>=((1000000.0/hfi_frequency)/2.0)){
-      hfi_state*=-1;
-      prev_hfi_time=micros();
-      hfi_dt=now;
-    }
-    voltage.d+=hfi_state*hfi_voltage;
+    //float now=micros()-prev_hfi_time;
+    // if((now)>=((1000000.0/hfi_frequency)/2.0)){
+    //   hfi_state*=-1;
+    //   prev_hfi_time=micros();
+    //   hfi_dt=now;
+    // }
+    // voltage.d+=hfi_state*hfi_voltage;
+    hfi_state=hfi_voltage*_sin(micros()*_2PI/((1.0f/hfi_frequency)*1000000.0f));
+    //prev_hfi_time=micros();
+    //hfi_dt=now;
+    
+    voltage.d+=hfi_state;
     hfi_injection_started=true;
   }
   // set the phase voltage - FOC heart function :)
