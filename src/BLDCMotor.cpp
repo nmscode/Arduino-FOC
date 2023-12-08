@@ -380,7 +380,8 @@ void BLDCMotor::loopFOC() {
     //   hfi_dt=now;
     // }
     // voltage.d+=hfi_state*hfi_voltage;
-    hfi_state=hfi_voltage*_sin(micros()*_2PI/((1.0f/hfi_frequency)*1000000.0f));
+    hfi_dt=micros();
+    hfi_state=hfi_voltage*_sin(_normalizeAngle(hfi_dt*_2PI/((1.0f/hfi_frequency)*1000000.0f)));
     //prev_hfi_time=micros();
     //hfi_dt=now;
     
