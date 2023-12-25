@@ -182,7 +182,7 @@ class FOCMotor
     bool hfi_enabled;
     float hfi_voltage;
     float hfi_frequency;
-    float hfi_dt;
+    unsigned long hfi_dt;
     float hfi_state;
     long prev_hfi_time;
     bool hfi_injection_started;
