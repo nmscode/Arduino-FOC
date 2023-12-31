@@ -357,7 +357,7 @@ void BLDCMotor::loopFOC() {
     case TorqueControlType::foc_current:
       if(!current_sense) return;
       // read dq currents
-      current = sensor->current;//current_sense->getFOCCurrents(electrical_angle);
+      current = current_sense->getFOCCurrents(electrical_angle);
       // filter values
       current.q = LPF_current_q(current.q);
       current.d = LPF_current_d(current.d);
