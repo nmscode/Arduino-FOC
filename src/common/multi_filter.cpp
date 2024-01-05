@@ -1,4 +1,4 @@
-#include "MultiFilter.h"
+#include "multi_filter.h"
 
 MultiFilter::MultiFilter(float frequency, float q_factor)
     : yl_prev(0.0f)
