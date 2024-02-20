@@ -136,7 +136,7 @@ void _driverSyncLowSide(void* driver_params, void* cs_params){
   #else
     // low-side & high side register enable interrupt
     mcpwm_dev->int_ena.timer0_tep_int_ena = true;//A PWM timer 0 TEP event will trigger this interrupt
-    mcpwm_dev->int_ena.timer0_tep_int_ena = true;//A PWM timer 0 TEZ event will trigger this interrupt 
+    mcpwm_dev->int_ena.timer0_tez_int_ena = true;//A PWM timer 0 TEZ event will trigger this interrupt 
   #endif
   // register interrupts (mcpwm number, interrupt handler, handler argument = NULL, interrupt signal/flag, return handler = NULL)
   if(mcpwm_unit == MCPWM_UNIT_0)
