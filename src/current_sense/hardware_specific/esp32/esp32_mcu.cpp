@@ -152,13 +152,18 @@ static void IRAM_ATTR mcpwm0_isr_handler(void*) __attribute__ ((unused));
 
 // Read currents when interrupt is triggered
 static void IRAM_ATTR mcpwm0_isr_handler(void*){
-  // GPIO.out_w1ts = ((uint32_t)1 << 19);
+  GPIO.out_w1ts = ((uint32_t)1 << 19);
   
   // // high side
   uint32_t mcpwm_intr_status_high = MCPWM0.int_st.timer0_tez_int_st;
 
   // low side
   uint32_t mcpwm_intr_status_low = MCPWM0.int_st.timer0_tep_int_st;
+
+  // // low side
+  // MCPWM0.int_clr.timer0_tep_int_clr = mcpwm_intr_status_low;//(mcpwm_intr_status >> 5) & 1;
+  // // high side
+  // MCPWM0.int_clr.timer0_tez_int_clr = mcpwm_intr_status_high;//(mcpwm_intr_status >> 2) & 1;
 
   // uint32_t mcpwm_intr_status = (MCPWM0.int_st.timer0_tep_int_st << 5) | (MCPWM0.int_st.timer0_tez_int_st << 2);
   #ifndef HFI_2XPWM
@@ -167,8 +172,9 @@ static void IRAM_ATTR mcpwm0_isr_handler(void*){
     bool runadc = mcpwm_intr_status_high || mcpwm_intr_status_low;
   #endif
 
-  if(mcpwm_intr_status_high || mcpwm_intr_status_low){
-      GPIO.out_w1ts = ((uint32_t)1 << 19);
+  // if(mcpwm_intr_status_high || mcpwm_intr_status_low){
+    {
+      // GPIO.out_w1ts = ((uint32_t)1 << 19);
 
     if(runadc){
       #if _I2S_ADC == true
@@ -180,7 +186,7 @@ static void IRAM_ATTR mcpwm0_isr_handler(void*){
         if(adc_read_index[0] == adc_pin_count[0]) adc_read_index[0] = 0;
       #endif
     }
-      GPIO.out_w1tc = ((uint32_t)1 << 19);
+      // GPIO.out_w1tc = ((uint32_t)1 << 19);
 
     #ifdef HFI
       // // enable FPU
@@ -219,7 +225,7 @@ static void IRAM_ATTR mcpwm0_isr_handler(void*){
   MCPWM0.int_clr.timer0_tep_int_clr = mcpwm_intr_status_low;//(mcpwm_intr_status >> 5) & 1;
   // high side
   MCPWM0.int_clr.timer0_tez_int_clr = mcpwm_intr_status_high;//(mcpwm_intr_status >> 2) & 1;
-  // GPIO.out_w1tc = ((uint32_t)1 << 19);
+  GPIO.out_w1tc = ((uint32_t)1 << 19);
 }
 
 static void IRAM_ATTR mcpwm1_isr_handler(void*) __attribute__ ((unused));
