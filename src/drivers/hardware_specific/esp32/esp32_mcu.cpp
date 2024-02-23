@@ -109,9 +109,9 @@ void _configureTimerFrequency(long pwm_frequency, mcpwm_dev_t* mcpwm_num,  mcpwm
   mcpwm_num->timer[1].timer_cfg0.timer_period = resolution_corrected;
   mcpwm_num->timer[2].timer_cfg0.timer_period = resolution_corrected;
   _delay(1);
-  mcpwm_num->timer[0].timer_cfg0.timer_period_upmethod = 3;
-  mcpwm_num->timer[1].timer_cfg0.timer_period_upmethod = 3;
-  mcpwm_num->timer[2].timer_cfg0.timer_period_upmethod = 3;
+  mcpwm_num->timer[0].timer_cfg0.timer_period_upmethod = 0;
+  mcpwm_num->timer[1].timer_cfg0.timer_period_upmethod = 0;
+  mcpwm_num->timer[2].timer_cfg0.timer_period_upmethod = 0;
   _delay(1);
   // _delay(1);
   //restart the timers
