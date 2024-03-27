@@ -195,7 +195,7 @@ static void IRAM_ATTR mcpwm0_isr_handler(void*){
       portEXIT_CRITICAL_ISR(&fpuInISRMutex);
 
     #endif
-  }
+  
   // low side
   MCPWM0.int_clr.timer0_tep_int_clr = mcpwm_intr_status_low;
   // high side
@@ -214,7 +214,7 @@ static void IRAM_ATTR mcpwm1_isr_handler(void*){
 
 
   bool runadc = mcpwm_intr_status_high || mcpwm_intr_status_low;
-
+  
     if(runadc){
       #if _I2S_ADC == true
         readFiFo();
@@ -248,7 +248,7 @@ static void IRAM_ATTR mcpwm1_isr_handler(void*){
       portEXIT_CRITICAL_ISR(&fpuInISRMutex);
 
     #endif
-  }
+  
   // low side
   MCPWM1.int_clr.timer0_tep_int_clr = mcpwm_intr_status_low;
   // high side
