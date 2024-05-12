@@ -1,17 +1,18 @@
-#include "stm32l4_hal.h"
+#include "stm32f7_hal.h"
 
-#if defined(STM32L4xx)
+#if defined(STM32F7xx)
+
+//#define SIMPLEFOC_STM32_DEBUG
 
 #include "../../../../communication/SimpleFOCDebug.h"
-
-#define SIMPLEFOC_STM32_DEBUG
+#define _TRGO_NOT_AVAILABLE 12345
 
 ADC_HandleTypeDef hadc;
 
 int _adc_init(Stm32CurrentSenseParams* cs_params, const STM32DriverParams* driver_params)
 {
   ADC_InjectionConfTypeDef sConfigInjected;
- 
+
   // check if all pins belong to the same ADC
   ADC_TypeDef* adc_pin1 = (ADC_TypeDef*)pinmap_peripheral(analogInputToPinName(cs_params->pins[0]), PinMap_ADC);
   ADC_TypeDef* adc_pin2 = (ADC_TypeDef*)pinmap_peripheral(analogInputToPinName(cs_params->pins[1]), PinMap_ADC);
@@ -24,60 +25,16 @@ int _adc_init(Stm32CurrentSenseParams* cs_params, const STM32DriverParams* drive
  }
 
 
- /**Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion) 
+  /**Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion) 
   */
   hadc.Instance = (ADC_TypeDef *)pinmap_peripheral(analogInputToPinName(cs_params->pins[0]), PinMap_ADC);
-  
-  if(hadc.Instance == ADC1) {
-#ifdef __HAL_RCC_ADC1_CLK_ENABLE
-    __HAL_RCC_ADC1_CLK_ENABLE();
+
+  if(hadc.Instance == ADC1) __HAL_RCC_ADC1_CLK_ENABLE();
+#ifdef ADC2  // if defined ADC2
+  else if(hadc.Instance == ADC2) __HAL_RCC_ADC2_CLK_ENABLE();
 #endif
-#ifdef __HAL_RCC_ADC12_CLK_ENABLE
-    __HAL_RCC_ADC12_CLK_ENABLE();
-#endif
-  }
-#ifdef ADC2
-  else if (hadc.Instance == ADC2) {
-#ifdef __HAL_RCC_ADC2_CLK_ENABLE
-    __HAL_RCC_ADC2_CLK_ENABLE();
-#endif
-#ifdef __HAL_RCC_ADC12_CLK_ENABLE
-    __HAL_RCC_ADC12_CLK_ENABLE();
-#endif
-  }
-#endif
-#ifdef ADC3
-  else if (hadc.Instance == ADC3) {
-#ifdef __HAL_RCC_ADC3_CLK_ENABLE
-    __HAL_RCC_ADC3_CLK_ENABLE();
-#endif
-#ifdef __HAL_RCC_ADC34_CLK_ENABLE
-    __HAL_RCC_ADC34_CLK_ENABLE();
-#endif
-#if defined(ADC345_COMMON)
-    __HAL_RCC_ADC345_CLK_ENABLE();
-#endif
-  } 
-#endif
-#ifdef ADC4
-  else if (hadc.Instance == ADC4) {
-#ifdef __HAL_RCC_ADC4_CLK_ENABLE
-    __HAL_RCC_ADC4_CLK_ENABLE();
-#endif
-#ifdef __HAL_RCC_ADC34_CLK_ENABLE
-    __HAL_RCC_ADC34_CLK_ENABLE();
-#endif
-#if defined(ADC345_COMMON)
-    __HAL_RCC_ADC345_CLK_ENABLE();
-#endif
-  }
-#endif
-#ifdef ADC5
-  else if (hadc.Instance == ADC5) {
-#if defined(ADC345_COMMON)
-    __HAL_RCC_ADC345_CLK_ENABLE();
-#endif
-  }
+#ifdef ADC3  // if defined ADC3
+  else if(hadc.Instance == ADC3) __HAL_RCC_ADC3_CLK_ENABLE();
 #endif
   else{
 #ifdef SIMPLEFOC_STM32_DEBUG
@@ -85,16 +42,15 @@ int _adc_init(Stm32CurrentSenseParams* cs_params, const STM32DriverParams* drive
 #endif
     return -1; // error not a valid ADC instance
   }
-
+  
 #ifdef SIMPLEFOC_STM32_DEBUG
     SIMPLEFOC_DEBUG("STM32-CS: Using ADC: ", _adcToIndex(&hadc)+1);
 #endif
 
-  hadc.Init.ClockPrescaler =  ADC_CLOCK_SYNC_PCLK_DIV4;
+  hadc.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
   hadc.Init.Resolution = ADC_RESOLUTION_12B;
-  hadc.Init.ScanConvMode = ADC_SCAN_ENABLE;
+  hadc.Init.ScanConvMode = ENABLE;
   hadc.Init.ContinuousConvMode = DISABLE;
-  hadc.Init.LowPowerAutoWait = DISABLE;
   hadc.Init.DiscontinuousConvMode = DISABLE;
   hadc.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
   hadc.Init.ExternalTrigConv = ADC_SOFTWARE_START; // for now
@@ -102,7 +58,6 @@ int _adc_init(Stm32CurrentSenseParams* cs_params, const STM32DriverParams* drive
   hadc.Init.NbrOfConversion = 1;
   hadc.Init.DMAContinuousRequests = DISABLE;
   hadc.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
-  hadc.Init.Overrun = ADC_OVR_DATA_PRESERVED;
   if ( HAL_ADC_Init(&hadc) != HAL_OK){
 #ifdef SIMPLEFOC_STM32_DEBUG
     SIMPLEFOC_DEBUG("STM32-CS: ERR: cannot init ADC!");
@@ -113,20 +68,22 @@ int _adc_init(Stm32CurrentSenseParams* cs_params, const STM32DriverParams* drive
   /**Configures for the selected ADC injected channel its corresponding rank in the sequencer and its sample time 
     */
   sConfigInjected.InjectedNbrOfConversion = _isset(cs_params->pins[2]) ? 3 : 2;
-  sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_2CYCLES_5;
-  sConfigInjected.ExternalTrigInjecConvEdge = ADC_EXTERNALTRIGINJECCONV_EDGE_RISING;  
+  sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_3CYCLES;
+  sConfigInjected.ExternalTrigInjecConvEdge = ADC_EXTERNALTRIGINJECCONVEDGE_RISINGFALLING;  
   sConfigInjected.AutoInjectedConv = DISABLE;
-  sConfigInjected.InjectedSingleDiff = ADC_SINGLE_ENDED;
   sConfigInjected.InjectedDiscontinuousConvMode = DISABLE;
-  sConfigInjected.InjectedOffsetNumber = ADC_OFFSET_NONE;
   sConfigInjected.InjectedOffset = 0;
-  sConfigInjected.InjecOversamplingMode = DISABLE;
-  sConfigInjected.QueueInjectedContext = DISABLE;
 
   // automating TRGO flag finding - hardware specific
   uint8_t tim_num = 0;
-  while(driver_params->timers[tim_num] != NP && tim_num < 6){
-    uint32_t trigger_flag = _timerToInjectedTRGO(driver_params->timers[tim_num++]);
+  for (size_t i=0; i<6; i++) {
+    HardwareTimer *timer_to_check = driver_params->timers[tim_num++];
+    TIM_TypeDef *instance_to_check = timer_to_check->getHandle()->Instance;
+
+    // bool TRGO_already_configured = instance_to_check->CR2 & LL_TIM_TRGO_UPDATE;
+    // if(TRGO_already_configured) continue;
+
+    uint32_t trigger_flag = _timerToInjectedTRGO(timer_to_check);
     if(trigger_flag == _TRGO_NOT_AVAILABLE) continue; // timer does not have valid trgo for injected channels
 
     // if the code comes here, it has found the timer available
@@ -134,17 +91,27 @@ int _adc_init(Stm32CurrentSenseParams* cs_params, const STM32DriverParams* drive
     sConfigInjected.ExternalTrigInjecConv = trigger_flag;
     
     // this will be the timer with which the ADC will sync
-    cs_params->timer_handle = driver_params->timers[tim_num-1];
+    cs_params->timer_handle = timer_to_check;
+    if (!IS_TIM_REPETITION_COUNTER_INSTANCE(instance_to_check)) {
+      // workaround for errata 2.2.1 in ES0290 Rev 7
+      // https://www.st.com/resource/en/errata_sheet/es0290-stm32f74xxx-and-stm32f75xxx-device-limitations-stmicroelectronics.pdf
+      __HAL_RCC_DAC_CLK_ENABLE();
+    } 
     // done
     break;
   }
   if( cs_params->timer_handle == NP ){
     // not possible to use these timers for low-side current sense
-#ifdef SIMPLEFOC_STM32_DEBUG
+  #ifdef SIMPLEFOC_STM32_DEBUG
     SIMPLEFOC_DEBUG("STM32-CS: ERR: cannot sync any timer to injected channels!");
-#endif
+  #endif
     return -1;
   }
+  // display which timer is being used
+  #ifdef SIMPLEFOC_STM32_DEBUG
+    // it would be better to use the getTimerNumber from driver
+    SIMPLEFOC_DEBUG("STM32-CS: injected trigger for timer index: ", get_timer_index(cs_params->timer_handle->getHandle()->Instance) + 1);
+  #endif
 
 
   // first channel
@@ -179,6 +146,12 @@ int _adc_init(Stm32CurrentSenseParams* cs_params, const STM32DriverParams* drive
     }
   }
   
+  #ifdef SIMPLEFOC_STM32_ADC_INTERRUPT
+  // enable interrupt
+  HAL_NVIC_SetPriority(ADC_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(ADC_IRQn);
+  #endif
+  
   cs_params->adc_handle = &hadc;
   return 0;
 }
@@ -200,31 +173,13 @@ void _adc_gpio_init(Stm32CurrentSenseParams* cs_params, const int pinA, const in
   }
 }
 
+#ifdef SIMPLEFOC_STM32_ADC_INTERRUPT
 extern "C" {
-  void ADC1_2_IRQHandler(void)
+  void ADC_IRQHandler(void)
   {
       HAL_ADC_IRQHandler(&hadc);
   }
-#ifdef ADC3
-  void ADC3_IRQHandler(void)
-  {
-      HAL_ADC_IRQHandler(&hadc);
-  }
-#endif
-
-#ifdef ADC4
-  void ADC4_IRQHandler(void)
-  {
-      HAL_ADC_IRQHandler(&hadc);
-  }
-#endif
-
-#ifdef ADC5
-  void ADC5_IRQHandler(void)
-  {
-      HAL_ADC_IRQHandler(&hadc);
-  }
-#endif
 }
+#endif
 
 #endif
