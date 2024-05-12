@@ -46,7 +46,7 @@ BLDCMotor::BLDCMotor(int pp, float _R, float _KV, float _inductance)
   // 1/sqrt(2) - rms value
   KV_rating = NOT_SET;
   if (_isset(_KV))
-    KV_rating = _KV*_SQRT2;
+    KV_rating = _KV;
   // save phase inductance
   phase_inductance = _inductance;
 
@@ -111,6 +111,8 @@ void BLDCMotor::init() {
 // disable motor driver
 void BLDCMotor::disable()
 {
+  // disable the current sense
+  if(current_sense) current_sense->disable();
   // set zero to PWM
   driver->setPwm(0, 0, 0);
   // disable the driver
@@ -125,6 +127,13 @@ void BLDCMotor::enable()
   driver->enable();
   // set zero to PWM
   driver->setPwm(0, 0, 0);
+  // enable the current sense
+  if(current_sense) current_sense->enable();
+  // reset the pids
+  PID_velocity.reset();
+  P_angle.reset();
+  PID_current_q.reset();
+  PID_current_d.reset();
   // motor status update
   enabled = 1;
 }
@@ -142,32 +151,36 @@ int  BLDCMotor::initFOC() {
   // alignment necessary for encoders!
   // sensor and motor alignment - can be skipped
   // by setting motor.sensor_direction and motor.zero_electric_angle
-  _delay(500);
   if(sensor){
     exit_flag *= alignSensor();
     // added the shaft_angle update
     sensor->update();
     shaft_angle = shaftAngle();
-  }else {
-    exit_flag = 0; // no FOC without sensor
-    SIMPLEFOC_DEBUG("MOT: No sensor.");
-  }
 
-  // aligning the current sensor - can be skipped
-  // checks if driver phases are the same as current sense phases
-  // and checks the direction of measuremnt.
-  _delay(500);
-  if(exit_flag){
-    if(current_sense){ 
-      if (!current_sense->initialized) {
-        motor_status = FOCMotorStatus::motor_calib_failed;
-        SIMPLEFOC_DEBUG("MOT: Init FOC error, current sense not initialized");
-        exit_flag = 0;
-      }else{
-        exit_flag *= alignCurrentSense();
+    // aligning the current sensor - can be skipped
+    // checks if driver phases are the same as current sense phases
+    // and checks the direction of measuremnt.
+    if(exit_flag){
+      if(current_sense){ 
+        if (!current_sense->initialized) {
+          motor_status = FOCMotorStatus::motor_calib_failed;
+          SIMPLEFOC_DEBUG("MOT: Init FOC error, current sense not initialized");
+          exit_flag = 0;
+        }else{
+          exit_flag *= alignCurrentSense();
+        }
       }
+      else { SIMPLEFOC_DEBUG("MOT: No current sense."); }
     }
-    else { SIMPLEFOC_DEBUG("MOT: No current sense."); }
+
+  } else {
+    SIMPLEFOC_DEBUG("MOT: No sensor.");
+    if ((controller == MotionControlType::angle_openloop || controller == MotionControlType::velocity_openloop)){
+      exit_flag = 1;    
+      SIMPLEFOC_DEBUG("MOT: Openloop only!");
+    }else{
+      exit_flag = 0; // no FOC without sensor
+    }
   }
 
   if(exit_flag){
@@ -212,6 +225,10 @@ int BLDCMotor::alignSensor() {
   // stop init if not found index
   if(!exit_flag) return exit_flag;
 
+  // v2.3.3 fix for R_AVR_7_PCREL against symbol" bug for AVR boards
+  // TODO figure out why this works
+  float voltage_align = voltage_sensor_align;
+
   // if unknown natural direction
   if(sensor_direction==Direction::UNKNOWN){
 
@@ -219,7 +236,7 @@ int BLDCMotor::alignSensor() {
     // move one electrical revolution forward
     for (int i = 0; i <=500; i++ ) {
       float angle = _3PI_2 + _2PI * i / 500.0f;
-      setPhaseVoltage(voltage_sensor_align, 0,  angle);
+      setPhaseVoltage(voltage_align, 0,  angle);
 	    sensor->update();
       _delay(2);
     }
@@ -229,13 +246,13 @@ int BLDCMotor::alignSensor() {
     // move one electrical revolution backwards
     for (int i = 500; i >=0; i-- ) {
       float angle = _3PI_2 + _2PI * i / 500.0f ;
-      setPhaseVoltage(voltage_sensor_align, 0,  angle);
+      setPhaseVoltage(voltage_align, 0,  angle);
 	    sensor->update();
       _delay(2);
     }
     sensor->update();
     float end_angle = sensor->getAngle();
-    setPhaseVoltage(0, 0, 0);
+    // setPhaseVoltage(0, 0, 0);
     _delay(200);
     // determine the direction the sensor moved
     float moved =  fabs(mid_angle - end_angle);
@@ -250,7 +267,8 @@ int BLDCMotor::alignSensor() {
       sensor_direction = Direction::CW;
     }
     // check pole pair number
-    if( fabs(moved*pole_pairs - _2PI) > 0.5f ) { // 0.5f is arbitrary number it can be lower or higher!
+    pp_check_result = !(fabs(moved*pole_pairs - _2PI) > 0.5f); // 0.5f is arbitrary number it can be lower or higher!
+    if( pp_check_result==false ) {
       SIMPLEFOC_DEBUG("MOT: PP check: fail - estimated pp: ", _2PI/moved);
     } else {
       SIMPLEFOC_DEBUG("MOT: PP check: OK!");
@@ -262,7 +280,7 @@ int BLDCMotor::alignSensor() {
   if(!_isset(zero_electric_angle)){
     // align the electrical phases of the motor and sensor
     // set angle -90(270 = 3PI/2) degrees
-    setPhaseVoltage(voltage_sensor_align, 0,  _3PI_2);
+    setPhaseVoltage(voltage_align, 0,  _3PI_2);
     _delay(700);
     // read the sensor
     sensor->update();
@@ -396,7 +414,7 @@ void BLDCMotor::move(float new_target) {
   if(_isset(new_target)) target = new_target;
   
   // calculate the back-emf voltage if KV_rating available U_bemf = vel*(1/KV)
-  if (_isset(KV_rating)) voltage_bemf = shaft_velocity/KV_rating/_RPM_TO_RADS;
+  if (_isset(KV_rating)) voltage_bemf = shaft_velocity/(KV_rating*_SQRT3)/_RPM_TO_RADS;
   // estimate the motor current if phase reistance available and current_sense not available
   if(!current_sense && _isset(phase_resistance)) current.q = (voltage.q - voltage_bemf)/phase_resistance;
 
@@ -422,7 +440,7 @@ void BLDCMotor::move(float new_target) {
       shaft_angle_sp = target;
       // calculate velocity set point
       shaft_velocity_sp = feed_forward_velocity + P_angle( shaft_angle_sp - shaft_angle );
-      shaft_angle_sp = _constrain(shaft_angle_sp,-velocity_limit, velocity_limit);
+      shaft_velocity_sp = _constrain(shaft_velocity_sp,-velocity_limit, velocity_limit);
       // calculate the torque command - sensor precision: this calculation is ok, but based on bad value from previous calculation
       current_sp = PID_velocity(shaft_velocity_sp - shaft_velocity); // if voltage torque control
       // if torque controlled through voltage
@@ -545,6 +563,7 @@ void BLDCMotor::setPhaseVoltage(float Uq, float Ud, float angle_el) {
     break;
 
     case FOCModulationType::SinePWM :
+    case FOCModulationType::SpaceVectorPWM :
       // Sinusoidal PWM modulation
       // Inverse Park + Clarke transformation
       _sincos(angle_el, &_sa, &_ca);
@@ -553,105 +572,32 @@ void BLDCMotor::setPhaseVoltage(float Uq, float Ud, float angle_el) {
       Ualpha =  _ca * Ud - _sa * Uq;  // -sin(angle) * Uq;
       Ubeta =  _sa * Ud + _ca * Uq;    //  cos(angle) * Uq;
 
-      // center = modulation_centered ? (driver->voltage_limit)/2 : Uq;
-      center = driver->voltage_limit/2;
       // Clarke transform
-      Ua = Ualpha + center;
-      Ub = -0.5f * Ualpha  + _SQRT3_2 * Ubeta + center;
-      Uc = -0.5f * Ualpha - _SQRT3_2 * Ubeta + center;
+      Ua = Ualpha;
+      Ub = -0.5f * Ualpha + _SQRT3_2 * Ubeta;
+      Uc = -0.5f * Ualpha - _SQRT3_2 * Ubeta;
+
+      center = driver->voltage_limit/2;
+      if (foc_modulation == FOCModulationType::SpaceVectorPWM){
+        // discussed here: https://community.simplefoc.com/t/embedded-world-2023-stm32-cordic-co-processor/3107/165?u=candas1
+        // a bit more info here: https://microchipdeveloper.com/mct5001:which-zsm-is-best
+        // Midpoint Clamp
+        float Umin = min(Ua, min(Ub, Uc));
+        float Umax = max(Ua, max(Ub, Uc));
+        center -= (Umax+Umin) / 2;
+      } 
 
       if (!modulation_centered) {
         float Umin = min(Ua, min(Ub, Uc));
         Ua -= Umin;
         Ub -= Umin;
         Uc -= Umin;
+      }else{
+        Ua += center;
+        Ub += center;
+        Uc += center;
       }
 
-      break;
-
-    case FOCModulationType::SpaceVectorPWM :
-      // Nice video explaining the SpaceVectorModulation (SVPWM) algorithm
-      // https://www.youtube.com/watch?v=QMSWUMEAejg
-
-      // the algorithm goes
-      // 1) Ualpha, Ubeta
-      // 2) Uout = sqrt(Ualpha^2 + Ubeta^2)
-      // 3) angle_el = atan2(Ubeta, Ualpha)
-      //
-      // equivalent to 2)  because the magnitude does not change is:
-      // Uout = sqrt(Ud^2 + Uq^2)
-      // equivalent to 3) is
-      // angle_el = angle_el + atan2(Uq,Ud)
-
-      float Uout;
-      // a bit of optitmisation
-      if(Ud){ // only if Ud and Uq set
-        // _sqrt is an approx of sqrt (3-4% error)
-        Uout = _sqrt(Ud*Ud + Uq*Uq) / driver->voltage_limit;
-        // angle normalisation in between 0 and 2pi
-        // only necessary if using _sin and _cos - approximation functions
-        angle_el = _normalizeAngle(angle_el + atan2(Uq, Ud));
-      }else{// only Uq available - no need for atan2 and sqrt
-        Uout = Uq / driver->voltage_limit;
-        // angle normalisation in between 0 and 2pi
-        // only necessary if using _sin and _cos - approximation functions
-        angle_el = _normalizeAngle(angle_el + _PI_2);
-      }
-      // find the sector we are in currently
-      sector = floor(angle_el / _PI_3) + 1;
-      // calculate the duty cycles
-      float T1 = _SQRT3*_sin(sector*_PI_3 - angle_el) * Uout;
-      float T2 = _SQRT3*_sin(angle_el - (sector-1.0f)*_PI_3) * Uout;
-      // two versions possible
-      float T0 = 0; // pulled to 0 - better for low power supply voltage
-      if (modulation_centered) {
-        T0 = 1 - T1 - T2; // modulation_centered around driver->voltage_limit/2
-      }
-
-      // calculate the duty cycles(times)
-      float Ta,Tb,Tc;
-      switch(sector){
-        case 1:
-          Ta = T1 + T2 + T0/2;
-          Tb = T2 + T0/2;
-          Tc = T0/2;
-          break;
-        case 2:
-          Ta = T1 +  T0/2;
-          Tb = T1 + T2 + T0/2;
-          Tc = T0/2;
-          break;
-        case 3:
-          Ta = T0/2;
-          Tb = T1 + T2 + T0/2;
-          Tc = T2 + T0/2;
-          break;
-        case 4:
-          Ta = T0/2;
-          Tb = T1+ T0/2;
-          Tc = T1 + T2 + T0/2;
-          break;
-        case 5:
-          Ta = T2 + T0/2;
-          Tb = T0/2;
-          Tc = T1 + T2 + T0/2;
-          break;
-        case 6:
-          Ta = T1 + T2 + T0/2;
-          Tb = T0/2;
-          Tc = T1 + T0/2;
-          break;
-        default:
-         // possible error state
-          Ta = 0;
-          Tb = 0;
-          Tc = 0;
-      }
-
-      // calculate the phase voltages and center
-      Ua = Ta*driver->voltage_limit;
-      Ub = Tb*driver->voltage_limit;
-      Uc = Tc*driver->voltage_limit;
       break;
 
   }
