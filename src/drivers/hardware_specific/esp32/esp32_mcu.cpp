@@ -1,4 +1,5 @@
 #include "esp32_driver_mcpwm.h"
+#include <soc/mcpwm_struct.h>
 
 #if defined(ESP_H) && defined(ARDUINO_ARCH_ESP32) && defined(SOC_MCPWM_SUPPORTED) && !defined(SIMPLEFOC_ESP32_USELEDC)
 
@@ -119,12 +120,18 @@ void _configureTimerFrequency(long pwm_frequency, mcpwm_dev_t* mcpwm_num,  mcpwm
   mcpwm_start(mcpwm_unit, MCPWM_TIMER_2);
   _delay(1);
 
+  mcpwm_sync_config_t sync_conf_0 = {
+    .sync_sig = MCPWM_SELECT_NO_INPUT,
+    .timer_val = 0,
+    .count_direction = MCPWM_TIMER_DIRECTION_UP
+  };
+
   mcpwm_sync_config_t sync_conf = {
     .sync_sig = MCPWM_SELECT_TIMER0_SYNC,
     .timer_val = 0,
     .count_direction = MCPWM_TIMER_DIRECTION_UP
   };
-  mcpwm_sync_configure(mcpwm_unit, MCPWM_TIMER_0, &sync_conf);
+  mcpwm_sync_configure(mcpwm_unit, MCPWM_TIMER_0, &sync_conf_0);
   mcpwm_sync_configure(mcpwm_unit, MCPWM_TIMER_1, &sync_conf);
   mcpwm_sync_configure(mcpwm_unit, MCPWM_TIMER_2, &sync_conf);
 
@@ -314,7 +321,7 @@ void _writeDutyCycle2PWM(float dc_a,  float dc_b, void* params){
 // - BLDC motor - 3PWM setting
 // - hardware speciffic
 //  ESP32 uses MCPWM
-void _writeDutyCycle3PWM(float dc_a,  float dc_b, float dc_c, void* params){
+void IRAM_ATTR _writeDutyCycle3PWM(float dc_a,  float dc_b, float dc_c, void* params){
   // se the PWM on the slot timers
   // transform duty cycle from [0,1] to [0,100]
   mcpwm_set_duty(((ESP32MCPWMDriverParams*)params)->mcpwm_unit, MCPWM_TIMER_0, ((ESP32MCPWMDriverParams*)params)->mcpwm_operator1, dc_a*100.0);
@@ -322,6 +329,15 @@ void _writeDutyCycle3PWM(float dc_a,  float dc_b, float dc_c, void* params){
   mcpwm_set_duty(((ESP32MCPWMDriverParams*)params)->mcpwm_unit, MCPWM_TIMER_2, ((ESP32MCPWMDriverParams*)params)->mcpwm_operator1, dc_c*100.0);
 }
 
+bool IRAM_ATTR _getPwmState(void* params){
+  // return false;
+  if(((ESP32MCPWMDriverParams*)params)->mcpwm_unit == MCPWM_UNIT_0){
+    return MCPWM0.timer[0].timer_status.timer_direction == 1; // 0: up; 1: down
+  }else
+  {
+    return MCPWM1.timer[0].timer_status.timer_direction == 1; // 0: up; 1: down
+  }
+}
 
 
 

@@ -61,6 +61,7 @@ void InlineCurrentSense::calibrateOffsets(){
     offset_ic = 0;
     // read the adc voltage 1000 times ( arbitrary number )
     for (int i = 0; i < calibration_rounds; i++) {
+        _startADC3PinConversionInline();
         if(_isset(pinA)) offset_ia += _readADCVoltageInline(pinA, params);
         if(_isset(pinB)) offset_ib += _readADCVoltageInline(pinB, params);
         if(_isset(pinC)) offset_ic += _readADCVoltageInline(pinC, params);
@@ -74,6 +75,7 @@ void InlineCurrentSense::calibrateOffsets(){
 
 // read all three phase currents (if possible 2 or 3)
 PhaseCurrent_s InlineCurrentSense::getPhaseCurrents(){
+    _startADC3PinConversionInline();
     PhaseCurrent_s current;
     current.a = (!_isset(pinA)) ? 0 : (_readADCVoltageInline(pinA, params) - offset_ia)*gain_a;// amps
     current.b = (!_isset(pinB)) ? 0 : (_readADCVoltageInline(pinB, params) - offset_ib)*gain_b;// amps
@@ -156,9 +158,9 @@ int InlineCurrentSense::driverAlign(float voltage){
         // read the current 50 times
         for (int i = 0; i < 100; i++) {
             PhaseCurrent_s c1 = getPhaseCurrents();
-            c.a = c.a*0.6 + 0.4f*c1.a;
-            c.b = c.b*0.6 + 0.4f*c1.b;
-            c.c = c.c*0.6 + 0.4f*c1.c;
+            c.a = c.a*0.6f + 0.4f*c1.a;
+            c.b = c.b*0.6f + 0.4f*c1.b;
+            c.c = c.c*0.6f + 0.4f*c1.c;
             _delay(3);
         }
         driver->setPwm(0, 0, 0);
@@ -203,9 +205,9 @@ int InlineCurrentSense::driverAlign(float voltage){
         // read the adc voltage 500 times ( arbitrary number )
         for (int i = 0; i < 100; i++) {
             PhaseCurrent_s c1 = getPhaseCurrents();
-            c.a = c.a*0.6 + 0.4f*c1.a;
-            c.b = c.b*0.6 + 0.4f*c1.b;
-            c.c = c.c*0.6 + 0.4f*c1.c;
+            c.a = c.a*0.6f + 0.4f*c1.a;
+            c.b = c.b*0.6f + 0.4f*c1.b;
+            c.c = c.c*0.6f + 0.4f*c1.c;
             _delay(3);
         }
         driver->setPwm(0, 0, 0);
