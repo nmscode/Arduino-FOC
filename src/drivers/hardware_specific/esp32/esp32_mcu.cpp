@@ -113,7 +113,13 @@ void _configureTimerFrequency(long pwm_frequency, mcpwm_dev_t* mcpwm_num,  mcpwm
   mcpwm_num->timer[1].timer_cfg0.timer_period_upmethod = 0;
   mcpwm_num->timer[2].timer_cfg0.timer_period_upmethod = 0;
   _delay(1);
-  // _delay(1);
+  mcpwm_num->operators[0].gen_stmp_cfg.gen_a_upmethod=2;
+  mcpwm_num->operators[0].gen_stmp_cfg.gen_b_upmethod=2;
+  mcpwm_num->operators[1].gen_stmp_cfg.gen_a_upmethod=2;
+  mcpwm_num->operators[1].gen_stmp_cfg.gen_b_upmethod=2;
+  mcpwm_num->operators[2].gen_stmp_cfg.gen_a_upmethod=2;
+  mcpwm_num->operators[2].gen_stmp_cfg.gen_b_upmethod=2;
+  _delay(1);
   //restart the timers
   mcpwm_start(mcpwm_unit, MCPWM_TIMER_0);
   mcpwm_start(mcpwm_unit, MCPWM_TIMER_1);
@@ -322,11 +328,16 @@ void _writeDutyCycle2PWM(float dc_a,  float dc_b, void* params){
 // - hardware speciffic
 //  ESP32 uses MCPWM
 void IRAM_ATTR _writeDutyCycle3PWM(float dc_a,  float dc_b, float dc_c, void* params){
-  // se the PWM on the slot timers
+  // Use the PWM on the slot timers
   // transform duty cycle from [0,1] to [0,100]
-  mcpwm_set_duty(((ESP32MCPWMDriverParams*)params)->mcpwm_unit, MCPWM_TIMER_0, ((ESP32MCPWMDriverParams*)params)->mcpwm_operator1, dc_a*100.0);
-  mcpwm_set_duty(((ESP32MCPWMDriverParams*)params)->mcpwm_unit, MCPWM_TIMER_1, ((ESP32MCPWMDriverParams*)params)->mcpwm_operator1, dc_b*100.0);
-  mcpwm_set_duty(((ESP32MCPWMDriverParams*)params)->mcpwm_unit, MCPWM_TIMER_2, ((ESP32MCPWMDriverParams*)params)->mcpwm_operator1, dc_c*100.0);
+  ((ESP32MCPWMDriverParams *)params)->mcpwm_dev->operators[0].timestamp[0].gen= ((ESP32MCPWMDriverParams *)params)->mcpwm_dev -> timer[0].timer_cfg0.timer_period * dc_a;
+  ((ESP32MCPWMDriverParams *)params)->mcpwm_dev->operators[1].timestamp[0].gen= ((ESP32MCPWMDriverParams *)params)->mcpwm_dev -> timer[1].timer_cfg0.timer_period * dc_b;
+  ((ESP32MCPWMDriverParams *)params)->mcpwm_dev->operators[2].timestamp[0].gen= ((ESP32MCPWMDriverParams *)params)->mcpwm_dev -> timer[2].timer_cfg0.timer_period * dc_c;
+
+  // mcpwm_set_duty(((ESP32MCPWMDriverParams*)params)->mcpwm_unit, MCPWM_TIMER_0, ((ESP32MCPWMDriverParams*)params)->mcpwm_operator1, dc_a*100.0);
+  // mcpwm_set_duty(((ESP32MCPWMDriverParams*)params)->mcpwm_unit, MCPWM_TIMER_1, ((ESP32MCPWMDriverParams*)params)->mcpwm_operator1, dc_b*100.0);
+  // mcpwm_set_duty(((ESP32MCPWMDriverParams*)params)->mcpwm_unit, MCPWM_TIMER_2, ((ESP32MCPWMDriverParams*)params)->mcpwm_operator1, dc_c*100.0);
+
 }
 
 bool IRAM_ATTR _getPwmState(void* params){
