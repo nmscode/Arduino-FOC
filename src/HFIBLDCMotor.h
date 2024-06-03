@@ -25,6 +25,7 @@ class HFIBLDCMotor: public FOCMotor
     bool hfi_firstcycle = true;
     bool hfi_on = false;
     bool hfi_high = false;
+    bool start_polarity_alignment=false;
     float hfi_v = 4.0f;
     uint8_t hfi_mode = 0;
     float hfi_curangleest = 0;
@@ -35,9 +36,18 @@ class HFIBLDCMotor: public FOCMotor
     float hfi_velocity;
     float error_saturation_limit = 0.30f;
 
+    float ocp_protection_limit=10;
+    int ocp_protection_maxcycles=1;
+    
+
     float Ts = 1.0f/60000.0f;
     float Ts_L = Ts * ( 1 / Lq - 1 / Ld );
     float current_bandwidth = 300;
+    float polarity_max_pos=0;
+    float polarity_max_neg=0;
+    float polarity_detection=0;
+    float polarity_alignment_voltage=0.5;
+
 
     DQCurrent_s current_meas;
     DQCurrent_s current_high;
@@ -141,6 +151,10 @@ class HFIBLDCMotor: public FOCMotor
     float angleOpenloop(float target_angle);
     // open loop variables
     long open_loop_timestamp;
+    int polarity_cycles=0;
+    int polarity_counter=0;
+    int ocp_cycles_counter=0;
+    float polarity_correction=1.0;
 };
 
 

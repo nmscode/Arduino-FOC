@@ -145,7 +145,7 @@ int  HFIBLDCMotor::initFOC() {
   #endif
   Ts_L = 2.0f*Ts * ( 1 / Lq - 1 / Ld );
   motor_status = FOCMotorStatus::motor_calibrating;
-
+  polarity_cycles=(int)(3.5*(Ld/phase_resistance)/Ts);
   // align motor if necessary
   // alignment necessary for encoders!
   // sensor and motor alignment - can be skipped
@@ -356,45 +356,98 @@ void HFIBLDCMotor::process_hfi(){
   current_meas.d = ABcurrent.alpha * _ca + ABcurrent.beta * _sa;
   current_meas.q = ABcurrent.beta * _ca - ABcurrent.alpha * _sa;
 
+  if(current_meas.d+current_meas.q>ocp_protection_limit){
+    ocp_cycles_counter+=1;
+  }
+  if(ocp_cycles_counter>=ocp_protection_maxcycles){
+    enabled=0;
+    driver->setPwm(0,0,0);
+    driver->disable();
+    return;
+  }
   hfi_v_act = hfi_v;
-  
-  if (hfi_firstcycle) {
-    hfi_v_act /= 2.0f;
-    hfi_firstcycle=false;
+  if(start_polarity_alignment){
+    if(polarity_counter<polarity_cycles){
+      voltage.d=0;
+      voltage.q=0;
+    }
+    else if(polarity_counter==polarity_cycles){
+      voltage.d=polarity_alignment_voltage;
+    }
+    else if(polarity_counter<2*polarity_cycles){
+        polarity_max_pos+=current_meas.d; 
+    }
+    else if (polarity_counter>=2*polarity_cycles && polarity_counter<4*polarity_cycles){
+      voltage.d=0;
+      voltage.q=0;
+    }
+    else if (polarity_counter==4*polarity_cycles){
+      voltage.d=-polarity_alignment_voltage;
+    }
+    else if (polarity_counter<5*polarity_cycles){
+      polarity_max_neg-=current_meas.d;
+    }
+    else if(polarity_counter<6*polarity_cycles){
+      voltage.d=0;
+    }
+    else{
+      if(polarity_max_neg>polarity_max_pos){
+        polarity_correction=-1.0;
+      }
+      start_polarity_alignment=false;
+      polarity_counter=0;
+      // polarity_max_neg=0;
+      // polarity_max_pos=0;
+      return;
+    }
+    polarity_counter+=1;
   }
 
-  if (hfi_high) {
-    current_high = current_meas;
-  } else {
-    current_low = current_meas;
-    hfi_v_act = -1.0f*hfi_v;
+  else
+  {
+    if (hfi_firstcycle)
+    {
+      hfi_v_act /= 2.0f;
+      hfi_firstcycle = false;
+    }
+
+    if (hfi_high)
+    {
+      current_high = current_meas;
+    }
+    else
+    {
+      current_low = current_meas;
+      hfi_v_act = -1.0f * hfi_v;
+    }
+
+    hfi_high = !hfi_high;
+
+    delta_current.q = current_high.q - current_low.q;
+    delta_current.d = current_high.d - current_low.d;
+
+    // hfi_curangleest = delta_current.q / (hfi_v * Ts_L );  // this is about half a us faster than vv
+    hfi_curangleest = 0.5f * delta_current.q / (hfi_v * Ts * (1.0f / Lq - 1.0f / Ld));
+    if (hfi_curangleest > error_saturation_limit)
+      hfi_curangleest = error_saturation_limit;
+    if (hfi_curangleest < -error_saturation_limit)
+      hfi_curangleest = -error_saturation_limit;
+    hfi_error = -hfi_curangleest;
+    hfi_int += Ts * hfi_error * hfi_gain2;           // This the the double integrator
+    hfi_out += hfi_gain1 * Ts * hfi_error + hfi_int; // This is the integrator and the double integrator
+
+    current_err.q = polarity_correction*current_setpoint.q - current_meas.q;
+    current_err.d = polarity_correction*current_setpoint.d - current_meas.d;
+
+    voltage_pid.q = PID_current_q(current_err.q, Ts);
+    voltage_pid.d = PID_current_d(current_err.d, Ts);
+
+    // lowpass does a += on the first arg
+    LOWPASS(voltage.q, voltage_pid.q, 0.34f);
+    LOWPASS(voltage.d, voltage_pid.d, 0.34f);
+
+    voltage.d += hfi_v_act;
   }
-
-  hfi_high = !hfi_high;
-
-  delta_current.q = current_high.q - current_low.q;
-  delta_current.d = current_high.d - current_low.d;
-
-  // hfi_curangleest = delta_current.q / (hfi_v * Ts_L );  // this is about half a us faster than vv
-  hfi_curangleest =  0.5f * delta_current.q / (hfi_v * Ts * ( 1.0f / Lq - 1.0f / Ld ) );
-  if (hfi_curangleest > error_saturation_limit) hfi_curangleest = error_saturation_limit;
-  if (hfi_curangleest < -error_saturation_limit) hfi_curangleest = -error_saturation_limit;
-  hfi_error = -hfi_curangleest;
-  hfi_int += Ts * hfi_error * hfi_gain2; //This the the double integrator
-  hfi_out += hfi_gain1 * Ts * hfi_error + hfi_int; //This is the integrator and the double integrator
-
-  current_err.q = current_setpoint.q - current_meas.q;
-  current_err.d = current_setpoint.d - current_meas.d;
-
-  voltage_pid.q = PID_current_q(current_err.q, Ts);
-  voltage_pid.d = PID_current_d(current_err.d, Ts);
-  
-  // lowpass does a += on the first arg
-  LOWPASS(voltage.q,voltage_pid.q, 0.34f);
-  LOWPASS(voltage.d,voltage_pid.d, 0.34f);
-
-  voltage.d += hfi_v_act;
-
   // // PMSM decoupling control and BEMF FF
   // stateX->VqFF = stateX->we * ( confX->Ld * stateX->Id_SP + confX->Lambda_m);
   // stateX->VqFF += stateX->Iq_SP * stateX->R ;
@@ -430,7 +483,9 @@ void HFIBLDCMotor::process_hfi(){
     // for hfi at 2x pwm
     driver->setPwm(Ua, Ub, Uc);
   #endif
-
+  if(start_polarity_alignment){
+    return;
+  }
   while (hfi_out < 0) { hfi_out += _2PI;}
 	while (hfi_out >=  _2PI) { hfi_out -= _2PI;}
   
