@@ -416,12 +416,23 @@ void HFIBLDCMotor::process_hfi(){
       if(flux_beta<-flux_linkage){flux_beta=-flux_linkage;}
       i_alpha_prev=ABcurrent.alpha;
       i_beta_prev=ABcurrent.beta;
-      flux_observer_angle=atan2(flux_beta,flux_alpha)+_PI;
-      bemf = voltage.q -phase_resistance * current_meas.q;
+      flux_observer_angle=atan2(flux_beta,flux_alpha);
+      if(flux_observer_angle<0){flux_observer_angle+=_2PI;}
+      bemf=(polarity_correction*(voltage.q -phase_resistance * current_meas.q));
       if(bemf>bemf_threshold){
+        bemf_count+=2;
+      }
+      else{
+        bemf_count-=2;
+        if(bemf_count<0){bemf_count=0;}
+      }
+      if(bemf_count>100){
+        bemf_count+=1;
+        if(bemf_count>200){bemf_count=200;}
         hfi_out=flux_observer_angle;
-        hfi_int=hfi_out-hfi_out_prev;
+        hfi_velocity=((bemf*KV_rating*_SQRT3*_2PI)/(60.0f));
         hfi_out_prev=hfi_out;
+        hfi_v_act=0;
       }
       else
       {
@@ -455,20 +466,21 @@ void HFIBLDCMotor::process_hfi(){
           hfi_curangleest = -error_saturation_limit;
         hfi_error = -hfi_curangleest;
         hfi_int += Ts * hfi_error * hfi_gain2;           // This the the double integrator
+        hfi_velocity=hfi_int /(Ts*pole_pairs);
         hfi_out += hfi_gain1 * Ts * hfi_error + hfi_int; // This is the integrator and the double integrator
-
-        current_err.q = polarity_correction * current_setpoint.q - current_meas.q;
-        current_err.d = polarity_correction * current_setpoint.d - current_meas.d;
-
-        voltage_pid.q = PID_current_q(current_err.q, Ts);
-        voltage_pid.d = PID_current_d(current_err.d, Ts);
-
-        // lowpass does a += on the first arg
-        LOWPASS(voltage.q, voltage_pid.q, 0.34f);
-        LOWPASS(voltage.d, voltage_pid.d, 0.34f);
-
-        voltage.d += hfi_v_act;
       }
+      current_err.q = polarity_correction * current_setpoint.q - current_meas.q;
+      current_err.d = polarity_correction * current_setpoint.d - current_meas.d;
+
+      voltage_pid.q = PID_current_q(current_err.q, Ts);
+      voltage_pid.d = PID_current_d(current_err.d, Ts);
+
+      // lowpass does a += on the first arg
+      LOWPASS(voltage.q, voltage_pid.q, 0.34f);
+      LOWPASS(voltage.d, voltage_pid.d, 0.34f);
+
+      voltage.d += hfi_v_act;
+      hfi_out_prev = hfi_out;
   }
   // // PMSM decoupling control and BEMF FF
   // stateX->VqFF = stateX->we * ( confX->Ld * stateX->Id_SP + confX->Lambda_m);
@@ -608,7 +620,7 @@ void HFIBLDCMotor::move(float new_target) {
     float tmp_hfi_int = hfi_int;
     interrupts();
     shaft_angle = (hfi_full_turns *_2PI + tmp_electrical_angle)/pole_pairs;
-    hfi_velocity = tmp_hfi_int /(Ts*pole_pairs);
+    //hfi_velocity = tmp_hfi_int /(Ts*pole_pairs);
   } else {
     if (!sensor){
       shaft_angle = shaftAngle(); // read value even if motor is disabled to keep the monitoring updated but not in openloop mode

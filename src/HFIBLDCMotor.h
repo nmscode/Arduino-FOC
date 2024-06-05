@@ -160,8 +160,9 @@ class HFIBLDCMotor: public FOCMotor
     float i_alpha_prev=0;
     float i_beta_prev=0;
     float hfi_out_prev=0;
-    float bemf;
+    float bemf=0;
     float flux_observer_angle=0;
+    int bemf_count=0;
 };
 
 
