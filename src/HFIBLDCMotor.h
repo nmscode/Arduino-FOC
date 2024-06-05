@@ -47,6 +47,7 @@ class HFIBLDCMotor: public FOCMotor
     float polarity_max_neg=0;
     float polarity_detection=0;
     float polarity_alignment_voltage=0.5;
+    float bemf_threshold=5;
 
 
     DQCurrent_s current_meas;
@@ -155,6 +156,12 @@ class HFIBLDCMotor: public FOCMotor
     int polarity_counter=0;
     int ocp_cycles_counter=0;
     float polarity_correction=1.0;
+    float flux_linkage, flux_alpha,flux_beta;
+    float i_alpha_prev=0;
+    float i_beta_prev=0;
+    float hfi_out_prev=0;
+    float bemf;
+    float flux_observer_angle=0;
 };
 
 
