@@ -639,6 +639,7 @@ void HFIBLDCMotor::move(float new_target) {
   if(!current_sense && _isset(phase_resistance)) current.q = (voltage.q - voltage_bemf)/phase_resistance;
   
   float temp_q_setpoint;
+  float tmp_hfi_velocity;
   // upgrade the current based voltage limit
   switch (controller) {
     case MotionControlType::torque:
@@ -684,7 +685,7 @@ void HFIBLDCMotor::move(float new_target) {
       shaft_velocity_sp = target;
       // calculate the torque command
       noInterrupts();
-      float tmp_hfi_velocity=hfi_velocity;
+      tmp_hfi_velocity=hfi_velocity;
       interrupts();
       temp_q_setpoint = PID_velocity(shaft_velocity_sp - tmp_hfi_velocity); // if current/foc_current torque control
       temp_q_setpoint = _constrain(temp_q_setpoint,-current_limit, current_limit);
