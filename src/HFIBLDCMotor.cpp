@@ -360,6 +360,9 @@ void HFIBLDCMotor::process_hfi(){
   if(current_meas.d+current_meas.q>ocp_protection_limit){
     ocp_cycles_counter+=1;
   }
+  else{
+    ocp_cycles_counter=0;
+  }
   if(ocp_cycles_counter>=ocp_protection_maxcycles){
     enabled=0;
     driver->setPwm(0,0,0);
