@@ -422,7 +422,7 @@ void HFIBLDCMotor::process_hfi(){
       flux_observer_angle=_atan2(flux_beta,flux_alpha);
       if(flux_observer_angle<0){flux_observer_angle+=_2PI;}
       bemf=(polarity_correction*(voltage.q -phase_resistance * current_meas.q));
-      if(bemf>bemf_threshold){
+      if(bemf>bemf_threshold || bemf<-bemf_threshold){
         bemf_count+=2;
       }
       else{
