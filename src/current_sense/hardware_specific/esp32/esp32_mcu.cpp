@@ -152,27 +152,19 @@ static void IRAM_ATTR mcpwm0_isr_handler(void*) __attribute__ ((unused));
 
 // Read currents when interrupt is triggered
 static void IRAM_ATTR mcpwm0_isr_handler(void*){
-  // GPIO.out_w1ts = ((uint32_t)1 << 19);
-  
-  // // high side
+  // GPIO.out_w1ts = ((uint32_t)1 << 15);
+
+  // high side
   uint32_t mcpwm_intr_status_high = MCPWM0.int_st.timer0_tez_int_st;
 
   // low side
   uint32_t mcpwm_intr_status_low = MCPWM0.int_st.timer0_tep_int_st;
 
-  // uint32_t mcpwm_intr_status = (MCPWM0.int_st.timer0_tep_int_st << 5) | (MCPWM0.int_st.timer0_tez_int_st << 2);
-  #ifndef HFI_2XPWM
-    bool runadc = mcpwm_intr_status_low;
-  #else
-    bool runadc = mcpwm_intr_status_high || mcpwm_intr_status_low;
-  #endif
-
-  if(mcpwm_intr_status_high || mcpwm_intr_status_low){
-      GPIO.out_w1ts = ((uint32_t)1 << 19);
+  
+  bool runadc = mcpwm_intr_status_high || mcpwm_intr_status_low;
 
     if(runadc){
       #if _I2S_ADC == true
-        delayMicroseconds(2);
         readFiFo();
       #else
         adc_buffer[0][adc_read_index[0]] = adcRead(adc_pins[0][adc_read_index[0]]);
@@ -180,27 +172,21 @@ static void IRAM_ATTR mcpwm0_isr_handler(void*){
         if(adc_read_index[0] == adc_pin_count[0]) adc_read_index[0] = 0;
       #endif
     }
-      GPIO.out_w1tc = ((uint32_t)1 << 19);
 
     #ifdef HFI
-      // // enable FPU
-      // xthal_set_cpenable(1);
-      // // Save FPU registers
-      // xthal_save_cp0(cp0_regs);
+      // enable FPU
       
       portENTER_CRITICAL_ISR(&fpuInISRMutex);
       uint32_t cp_state = xthal_get_cpenable();
       if(!cp_state) {
           xthal_set_cpenable(1);
       }
-
       xthal_save_cp0(cp0_regs);   // Save FPU registers
 
       process_hfi();
 
       
       xthal_restore_cp0(cp0_regs);
-
       if(cp_state) {
           // Restore FPU registers
       } else {
@@ -209,67 +195,55 @@ static void IRAM_ATTR mcpwm0_isr_handler(void*){
       }
       portEXIT_CRITICAL_ISR(&fpuInISRMutex);
 
-      // // Restore FPU
-      // xthal_restore_cp0(cp0_regs);
-      // // and turn it back off
-      // xthal_set_cpenable(0);
     #endif
-  }
-  // low side
-  MCPWM0.int_clr.timer0_tep_int_clr = mcpwm_intr_status_low;//(mcpwm_intr_status >> 5) & 1;
+  
   // high side
-  MCPWM0.int_clr.timer0_tez_int_clr = mcpwm_intr_status_high;//(mcpwm_intr_status >> 2) & 1;
-  // GPIO.out_w1tc = ((uint32_t)1 << 19);
+  MCPWM0.int_clr.timer0_tez_int_clr = mcpwm_intr_status_high;
+  // low side
+  MCPWM0.int_clr.timer0_tep_int_clr = mcpwm_intr_status_low;
+  delayMicroseconds(0);
+  // GPIO.out_w1tc = ((uint32_t)1 << 15);
+  
+  
 }
 
 static void IRAM_ATTR mcpwm1_isr_handler(void*) __attribute__ ((unused));
 
 // Read currents when interrupt is triggered
 static void IRAM_ATTR mcpwm1_isr_handler(void*){
-
-  // // high side
+// high side
   uint32_t mcpwm_intr_status_high = MCPWM1.int_st.timer0_tez_int_st;
 
   // low side
   uint32_t mcpwm_intr_status_low = MCPWM1.int_st.timer0_tep_int_st;
 
-  // uint32_t mcpwm_intr_status = (MCPWM1.int_st.timer0_tep_int_st << 5) | (MCPWM1.int_st.timer0_tez_int_st << 2);
-  #ifndef HFI_2XPWM
-    bool runadc = mcpwm_intr_status_low;
-  #else
-    bool runadc = mcpwm_intr_status_high || mcpwm_intr_status_low;
-  #endif
 
-  if(mcpwm_intr_status_high || mcpwm_intr_status_low){
+  bool runadc = mcpwm_intr_status_high || mcpwm_intr_status_low;
+  
     if(runadc){
       #if _I2S_ADC == true
-        delayMicroseconds(2);
         readFiFo();
       #else
-        adc_buffer[0][adc_read_index[0]] = adcRead(adc_pins[0][adc_read_index[0]]);
-        adc_read_index[0]++;
-        if(adc_read_index[0] == adc_pin_count[0]) adc_read_index[0] = 0;
+        adc_buffer[1][adc_read_index[1]] = adcRead(adc_pins[1][adc_read_index[1]]);
+        adc_read_index[1]++;
+        if(adc_read_index[1] == adc_pin_count[1]) adc_read_index[1] = 0;
       #endif
     }
+
     #ifdef HFI
-      // // enable FPU
-      // xthal_set_cpenable(1);
-      // // Save FPU registers
-      // xthal_save_cp0(cp0_regs);
+      // enable FPU
       
       portENTER_CRITICAL_ISR(&fpuInISRMutex);
       uint32_t cp_state = xthal_get_cpenable();
       if(!cp_state) {
           xthal_set_cpenable(1);
       }
-
       xthal_save_cp0(cp0_regs);   // Save FPU registers
 
       process_hfi();
 
       
       xthal_restore_cp0(cp0_regs);
-
       if(cp_state) {
           // Restore FPU registers
       } else {
@@ -278,16 +252,13 @@ static void IRAM_ATTR mcpwm1_isr_handler(void*){
       }
       portEXIT_CRITICAL_ISR(&fpuInISRMutex);
 
-      // // Restore FPU
-      // xthal_restore_cp0(cp0_regs);
-      // // and turn it back off
-      // xthal_set_cpenable(0);
     #endif
-  }
-  // low side
-  MCPWM1.int_clr.timer0_tep_int_clr = mcpwm_intr_status_low;//(mcpwm_intr_status >> 5) & 1;
+
   // high side
-  MCPWM1.int_clr.timer0_tez_int_clr = mcpwm_intr_status_high;//(mcpwm_intr_status >> 2) & 1;
+  MCPWM1.int_clr.timer0_tez_int_clr = mcpwm_intr_status_high;
+  // low side
+  MCPWM1.int_clr.timer0_tep_int_clr = mcpwm_intr_status_low;
+  delayMicroseconds(0);
 }
 
 

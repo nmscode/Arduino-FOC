@@ -51,36 +51,43 @@ int globalActiveChannels = 0;
 int channels[ADC1_CHANNEL_MAX] = {0};
 bool running = false;
 bool sampleOnCommand = true;
+
 #if DEBUG_ADC == true
-uint32_t IRAM_ATTR readscnt = 0;
-uint32_t IRAM_ATTR intcnt = 0;
-uint32_t IRAM_ATTR skipped = 0;
-uint32_t IRAM_ATTR equal = 0;
-uint32_t IRAM_ATTR currfifo = 0;
-uint32_t IRAM_ATTR lastfifo = 0;
-unsigned long IRAM_ATTR ts = 0;
-unsigned long IRAM_ATTR fifotime = 0;
+    uint32_t IRAM_ATTR readscnt = 0;
+    volatile uint32_t IRAM_ATTR buffersread = 0;
+    uint32_t IRAM_ATTR intcnt = 0;
+    uint32_t IRAM_ATTR skipped = 0;
+    uint32_t IRAM_ATTR equal = 0;
+    uint32_t IRAM_ATTR currfifo = 0;
+    uint32_t IRAM_ATTR lastfifo = 0;
+    unsigned long IRAM_ATTR ts = 0;
+    unsigned long IRAM_ATTR fifotime = 0;
+
 #endif
 
 // This function reads data from the I2S FIFO and processes it to obtain average readings for each channel.
 // The ADC counts get saved in uint32_t i2s_adc_buffer[].
 void IRAM_ATTR readFiFo()
 {
+
+    CLEAR_PERI_REG_MASK(I2S_CONF_REG(0), I2S_RX_START); // Stop aquisition to buffer
+
     // uint32_t readings[ADC1_CHANNEL_MAX][ADC1_CHANNEL_MAX*BUF_LEN];
-    uint32_t avgreadings[ADC1_CHANNEL_MAX] = {0};
-    uint32_t counts[ADC1_CHANNEL_MAX] = {0};
+    // uint32_t avgreadings[ADC1_CHANNEL_MAX] = {0};
+    // uint32_t counts[ADC1_CHANNEL_MAX] = {0};
     uint32_t fifolen = GET_PERI_REG_BITS2(I2S_FIFO_CONF_REG(0), I2S_RX_DATA_NUM_M, I2S_RX_DATA_NUM_S); // I2S0.fifo_conf.rx_data_num;
+    #if DEBUG_ADC
+        uint32_t lastrd = 0;
+        uint32_t lasth = 0;
+        uint32_t lastl = 0;
+        uint32_t internalequal = 0;
+        uint32_t internal_buffersread = 0;
+    #endif
+    
+    I2S0.int_ena.rx_rempty = 1;
+    I2S0.int_clr.rx_rempty = 1;
 
-#if DEBUG_ADC
-    uint32_t lastrd = 0;
-    uint32_t lasth = 0;
-    uint32_t lastl = 0;
-    uint32_t internalequal = 0;
-#endif
-
-    for (size_t i = 0; i < fifolen; i++)
-    {
-        // while(!GET_PERI_REG_MASK(I2S_INT_RAW_REG(0), I2S_RX_REMPTY_INT_RAW_M)){
+    while(!GET_PERI_REG_MASK(I2S_INT_RAW_REG(0), I2S_RX_REMPTY_INT_RAW_M)){
         // I2S0.in_fifo_pop.pop = 1;
         // I2S0.in_fifo_pop.pop = 0;
         SET_PERI_REG_MASK(I2S_INFIFO_POP_REG(0), I2S_INFIFO_POP_M);
@@ -91,79 +98,69 @@ void IRAM_ATTR readFiFo()
         uint32_t highVal = rd >> 16;
         uint32_t lowVal = rd & 0xFFFF;
 
-#if DEBUG_ADC == true
-    if (rd == lastrd || highVal == lastl || lowVal == lasth)
-    { //
-        internalequal++;
-        // currfifo = rd;
-        // lastfifo = lastrd;
-        // Serial.printf("\n|\nlast: ");
-        // for (int i = 31; i >= 15; i--)
-        // {
-        //   Serial.printf("%d",(lastfifo >> i ) & 1);
-        // }
-        // Serial.printf("  ");
-        // for (int i = 15; i >= 0; i--)
-        // {
-        //   Serial.printf("%d",(lastfifo >> i ) & 1);
-        // }
+        #if DEBUG_ADC == true
+            if (rd == lastrd || highVal == lastl || lowVal == lasth)
+            { //
+                internalequal++;
+                // currfifo = rd;
+                // lastfifo = lastrd;
+                // Serial.printf("\n|\nlast: ");
+                // for (int i = 31; i >= 15; i--)
+                // {
+                //   Serial.printf("%d",(lastfifo >> i ) & 1);
+                // }
+                // Serial.printf("  ");
+                // for (int i = 15; i >= 0; i--)
+                // {
+                //   Serial.printf("%d",(lastfifo >> i ) & 1);
+                // }
 
-        // Serial.printf("\ncurr: ");
-        // for (int i = 31; i >= 15; i--)
-        // {
-        //   Serial.printf("%d",(currfifo >> i ) & 1);
-        // }
-        // Serial.printf("  ");
-        // for (int i = 15; i >= 0; i--)
-        // {
-        //   Serial.printf("%d",(currfifo >> i ) & 1);
-        // }
-        // Serial.printf("\n");
+                // Serial.printf("\ncurr: ");
+                // for (int i = 31; i >= 15; i--)
+                // {
+                //   Serial.printf("%d",(currfifo >> i ) & 1);
+                // }
+                // Serial.printf("  ");
+                // for (int i = 15; i >= 0; i--)
+                // {
+                //   Serial.printf("%d",(currfifo >> i ) & 1);
+                // }
+                // Serial.printf("\n");
+            }
+
+            lasth = highVal;
+            lastl = lowVal;
+            lastrd = rd;
+            readscnt += 2;
+            internal_buffersread++;
+        #endif
+
+        uint32_t chan = (lowVal >> 12) & 0x07;
+        uint32_t adc_value = lowVal & 0xfff;
+        // readings[chan][counts[chan]] = adc_value;
+        // avgreadings[chan] = adc_value;
+        i2s_adc_buffer[chan] = adc_value;
+        // counts[chan]++;
+
+        chan = (highVal >> 12) & 0x07;
+        adc_value = highVal & 0xfff;
+        // readings[chan][counts[chan]] = adc_value;
+        // avgreadings[chan] = adc_value;
+        i2s_adc_buffer[chan] = adc_value;
+        // counts[chan]++;
     }
 
-    lasth = highVal;
-    lastl = lowVal;
-    lastrd = rd;
-    readscnt += 2;
-#endif
-    uint32_t chan = (lowVal >> 12) & 0x07;
-    uint32_t adc_value = lowVal & 0xfff;
-    // readings[chan][counts[chan]] = adc_value;
-    avgreadings[chan] += adc_value;
-    counts[chan]++;
+    I2S0.int_ena.rx_rempty = 0;
+    I2S0.int_clr.rx_rempty = 1;
 
-    chan = (highVal >> 12) & 0x07;
-    adc_value = highVal & 0xfff;
-    // readings[chan][counts[chan]] = adc_value;
-    avgreadings[chan] += adc_value;
-    counts[chan]++;
-  }
-#if DEBUG_ADC == true
-  equal = internalequal;
-  intcnt += 1; // I2S0.fifo_conf.rx_data_num;
-#endif
-  for (int j = 0; j < ADC1_CHANNEL_MAX; j++)
-  {
-      if (counts[j] != 0)
-      {
-          i2s_adc_buffer[j] = avgreadings[j] / counts[j];
+    #if DEBUG_ADC == true
+        equal = internalequal;
+        intcnt += 1;
+        buffersread = internal_buffersread;
+    #endif
 
-          // int32_t leastdiff = 4095;
-          // uint32_t idx = 0;
-          // for (size_t k = 0; k < counts[j]; k++)
-          // {
-          //   int32_t diff = abs(int(i2s_adc_buffer[j]) - int(readings[j][k]));
-          //   if (leastdiff > diff && diff != 0)
-          //   {
-          //     leastdiff = diff;
-          //     idx = k;
-          //   }
-          // }
-          // i2s_adc_buffer[j] = readings[j][idx];
+    SET_PERI_REG_MASK(I2S_CONF_REG(0), I2S_RX_START); // Restart aquisition to buffer
 
-          // Serial.printf(">Channel%d:%d\n", j, i2s_adc_buffer[j]);
-      }
-  }
 }
 
 #if I2S_USE_INTERRUPT == true
@@ -173,7 +170,7 @@ static void IRAM_ATTR i2s_isr(void *arg)
     unsigned long fifostart = micros();
 #endif
 
-    if (I2S0.int_st.rx_take_data) // fifo is full
+    if (I2S0.int_st.rx_wfull) // fifo is full
     {
         readFiFo();
     }
@@ -187,72 +184,74 @@ static void IRAM_ATTR i2s_isr(void *arg)
 }
 #endif
 
+void printdbg(){
+    #if DEBUG_ADC == true
+        // skipped++;
+        // if (skipped >= 1000)
+        {
+            // skipped = 0;
+            unsigned long now = micros();
+            volatile uint32_t interr = intcnt;
+            volatile uint32_t samplesss = readscnt;
+            intcnt = 0;
+            readscnt = 0;
+
+            float readspersec = (1000000.0f * interr) / (now - ts);
+            float samplespersec = (1000000.0f * samplesss) / (now - ts);
+
+            ts = now;
+            Serial.printf(">ips:%f\n", readspersec);
+            Serial.printf(">sps:%f\n", samplespersec); // readspersec * GET_PERI_REG_BITS2(I2S_FIFO_CONF_REG(0), I2S_RX_DATA_NUM_M, I2S_RX_DATA_NUM_S)); //I2S0.fifo_conf.rx_data_num
+            Serial.printf(">fifo:%ld\n", fifotime);
+            Serial.printf(">doubles:%ld\n", equal);
+            Serial.printf(">bufreads:%d\n", buffersread);
+            // if(equal > 0){
+            //   volatile uint32_t aktuell = currfifo;
+            //   volatile uint32_t zuletzt = lastfifo;
+
+            // Serial.printf("\n|\nlast: ");
+            // for (int i = 31; i >= 15; i--)
+            // {
+            //   Serial.printf("%d",(zuletzt >> i ) & 1);
+            // }
+            // Serial.printf("  ");
+            // for (int i = 15; i >= 0; i--)
+            // {
+            //   Serial.printf("%d",(zuletzt >> i ) & 1);
+            // }
+
+            // Serial.printf("\ncurr: ");
+            // for (int i = 31; i >= 15; i--)
+            // {
+            //   Serial.printf("%d",(aktuell >> i ) & 1);
+            // }
+            // Serial.printf("  ");
+            // for (int i = 15; i >= 0; i--)
+            // {
+            //   Serial.printf("%d",(aktuell >> i ) & 1);
+            // }
+            // Serial.printf("\n");
+
+            // }
+
+            for (size_t i = 0; i < ADC1_CHANNEL_MAX; i++)
+            {
+                Serial.printf(">Channel%d:%d\n", i, i2s_adc_buffer[i]);
+            }
+        }
+    #endif
+}
 // Contrary to its name (so it can be called by the library), this function reads the already converted values from fifo
 // and prints optional debug information.
 // When using interrupt driven sampling, it only prints debug information.
 void IRAM_ATTR _startADC3PinConversionLowSide()
 {
-#if I2S_USE_INTERRUPT != true
-    if (sampleOnCommand)
-    {
-        readFiFo();
-    }
-#endif
-
-#if DEBUG_ADC == true
-    skipped++;
-    if (skipped >= 1000)
-    {
-        skipped = 0;
-        unsigned long now = micros();
-        volatile uint32_t interr = intcnt;
-        volatile uint32_t samplesss = readscnt;
-        intcnt = 0;
-        readscnt = 0;
-
-        float readspersec = (1000000.0f * interr) / (now - ts);
-        float samplespersec = (1000000.0f * samplesss) / (now - ts);
-
-        ts = now;
-        Serial.printf(">ips:%f\n", readspersec);
-        Serial.printf(">sps:%f\n", samplespersec); // readspersec * GET_PERI_REG_BITS2(I2S_FIFO_CONF_REG(0), I2S_RX_DATA_NUM_M, I2S_RX_DATA_NUM_S)); //I2S0.fifo_conf.rx_data_num
-        Serial.printf(">fifo:%ld\n", fifotime);
-        Serial.printf(">doubles:%ld\n", equal);
-        // if(equal > 0){
-        //   volatile uint32_t aktuell = currfifo;
-        //   volatile uint32_t zuletzt = lastfifo;
-
-        // Serial.printf("\n|\nlast: ");
-        // for (int i = 31; i >= 15; i--)
-        // {
-        //   Serial.printf("%d",(zuletzt >> i ) & 1);
-        // }
-        // Serial.printf("  ");
-        // for (int i = 15; i >= 0; i--)
-        // {
-        //   Serial.printf("%d",(zuletzt >> i ) & 1);
-        // }
-
-        // Serial.printf("\ncurr: ");
-        // for (int i = 31; i >= 15; i--)
-        // {
-        //   Serial.printf("%d",(aktuell >> i ) & 1);
-        // }
-        // Serial.printf("  ");
-        // for (int i = 15; i >= 0; i--)
-        // {
-        //   Serial.printf("%d",(aktuell >> i ) & 1);
-        // }
-        // Serial.printf("\n");
-
-        // }
-
-        for (size_t i = 0; i < ADC1_CHANNEL_MAX; i++)
+    #if I2S_USE_INTERRUPT != true
+        if (sampleOnCommand)
         {
-            Serial.printf(">Channel%d:%d\n", i, i2s_adc_buffer[i]);
+            readFiFo();
         }
-    }
-#endif
+    #endif
 }
 
 void IRAM_ATTR _startADC3PinConversionInline(){
@@ -273,9 +272,9 @@ void* IRAM_ATTR _configureI2S(const bool lowside, const void* driver_params, con
 
   mcpwm_unit_t unit = ((ESP32MCPWMDriverParams*)driver_params)->mcpwm_unit;
 
-  if( _isset(pinA) ) channels[digitalPinToAnalogChannel(pinA)] = 1;// pinMode(pinA, GPIO_MODE_DISABLE);
-  if( _isset(pinB) ) channels[digitalPinToAnalogChannel(pinB)] = 1; //pinMode(pinB, GPIO_MODE_DISABLE);
-  if( _isset(pinC) ) channels[digitalPinToAnalogChannel(pinC)] = 1;// pinMode(pinC, GPIO_MODE_DISABLE);
+  if( _isset(pinA) ) channels[digitalPinToAnalogChannel(pinA)] = 1; // pinMode(pinA, GPIO_MODE_DISABLE);
+  if( _isset(pinB) ) channels[digitalPinToAnalogChannel(pinB)] = 1; // pinMode(pinB, GPIO_MODE_DISABLE);
+  if( _isset(pinC) ) channels[digitalPinToAnalogChannel(pinC)] = 1; // pinMode(pinC, GPIO_MODE_DISABLE);
 
   int activeChannels = 0;
   u_int some_channel = 0;
@@ -331,14 +330,15 @@ void* IRAM_ATTR _configureI2S(const bool lowside, const void* driver_params, con
 
   I2S0.conf_chan.rx_chan_mod = 2;
 
-  I2S0.fifo_conf.rx_data_num = max(2, min(63, (globalActiveChannels * BUF_LEN) / 2));
   I2S0.fifo_conf.dscr_en = 0; // disable dma transfer.
 
   I2S0.int_ena.val = 0;
-
 #if I2S_USE_INTERRUPT == true
-  I2S0.int_ena.rx_take_data = 1;
-// I2S0.int_ena.rx_rempty = 1;
+  I2S0.fifo_conf.rx_data_num = max(2, min(63, (globalActiveChannels * BUF_LEN) / 2));
+  I2S0.int_ena.rx_wfull = 1;
+
+  // I2S0.int_ena.rx_take_data = 1;
+  // I2S0.int_ena.rx_rempty = 1;
 #endif
 
     // ADC setting
