@@ -2,6 +2,7 @@
 #include <soc/mcpwm_struct.h>
 
 #if defined(ESP_H) && defined(ARDUINO_ARCH_ESP32) && defined(SOC_MCPWM_SUPPORTED) && !defined(SIMPLEFOC_ESP32_USELEDC)
+#include <soc/mcpwm_struct.h>
 
 #ifndef SIMPLEFOC_ESP32_HW_DEADTIME
   #define SIMPLEFOC_ESP32_HW_DEADTIME true // TODO: Change to false when sw-deadtime & phase_state is approved ready for general use.
@@ -125,6 +126,7 @@ void _configureTimerFrequency(long pwm_frequency, mcpwm_dev_t* mcpwm_num,  mcpwm
   mcpwm_start(mcpwm_unit, MCPWM_TIMER_1);
   mcpwm_start(mcpwm_unit, MCPWM_TIMER_2);
   _delay(1);
+
 
   mcpwm_sync_config_t sync_conf_0 = {
     .sync_sig = MCPWM_SELECT_NO_INPUT,

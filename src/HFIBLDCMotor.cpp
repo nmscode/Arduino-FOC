@@ -69,12 +69,12 @@ void HFIBLDCMotor::init() {
     PID_current_d.limit = voltage_limit;
 
     PID_current_d.P = Ld*current_bandwidth*_2PI;
-    PID_current_d.I = PID_current_d.P*(phase_resistance/2)/(Ld);
+    PID_current_d.I = PID_current_d.P*phase_resistance/Ld;
     PID_current_q.D = 0;
     PID_current_d.output_ramp = 0;
 
     PID_current_q.P = Lq*current_bandwidth*_2PI;
-    PID_current_q.I = PID_current_q.P*(phase_resistance/2)/(Lq);
+    PID_current_q.I = PID_current_q.P*phase_resistance/Lq;
     PID_current_q.D = 0;
     PID_current_q.output_ramp = 0;
 
@@ -148,7 +148,8 @@ int  HFIBLDCMotor::initFOC() {
   #endif
   Ts_L = 2.0f*Ts * ( 1 / Lq - 1 / Ld );
   motor_status = FOCMotorStatus::motor_calibrating;
-
+  polarity_cycles=(int)(3.5*(Ld/phase_resistance)/Ts);
+  flux_linkage = 60.0 / ( _sqrt(3) * _PI * (KV_rating) * (pole_pairs * 2));
   // align motor if necessary
   // alignment necessary for encoders!
   // sensor and motor alignment - can be skipped
@@ -359,69 +360,161 @@ void IRAM_ATTR HFIBLDCMotor::process_hfi(){
   current_meas.d = ABcurrent.alpha * _ca + ABcurrent.beta * _sa;
   current_meas.q = ABcurrent.beta * _ca - ABcurrent.alpha * _sa;
 
+  if(current_meas.d+current_meas.q>ocp_protection_limit){
+    ocp_cycles_counter+=1;
+  }
+
+  else{
+    ocp_cycles_counter=0;
+  }
+  if(ocp_cycles_counter>=ocp_protection_maxcycles){
+    enabled=0;
+    driver->setPwm(0,0,0);
+    driver->disable();
+    return;
+  }
   hfi_v_act = hfi_v;
-  
-  if (hfi_firstcycle) {
-    hfi_v_act /= 2.0f;
-    hfi_firstcycle=false;
+  if(start_polarity_alignment){
+    if(polarity_counter<polarity_cycles){
+      voltage.d=0;
+      voltage.q=0;
+    }
+    else if(polarity_counter==polarity_cycles){
+      voltage.d=polarity_alignment_voltage;
+    }
+    else if(polarity_counter<2*polarity_cycles){
+        polarity_max_pos+=current_meas.d; 
+    }
+    else if (polarity_counter>=2*polarity_cycles && polarity_counter<4*polarity_cycles){
+      voltage.d=0;
+      voltage.q=0;
+    }
+    else if (polarity_counter==4*polarity_cycles){
+      voltage.d=-polarity_alignment_voltage;
+    }
+    else if (polarity_counter<5*polarity_cycles){
+      polarity_max_neg-=current_meas.d;
+    }
+    else if(polarity_counter<6*polarity_cycles){
+      voltage.d=0;
+    }
+    else{
+      if(polarity_max_neg>polarity_max_pos){
+        polarity_correction=-1.0;
+      }
+      start_polarity_alignment=false;
+      polarity_counter=0;
+      // polarity_max_neg=0;
+      // polarity_max_pos=0;
+      return;
+    }
+    polarity_counter+=1;
   }
 
- #if SWAP_HILO == true 
-    if (hfi_high) {
-      current_low = current_meas;
-    } else {
-      current_high = current_meas;
-      hfi_v_act = -1.0f*hfi_v;
-    }
-  #else
-    if (hfi_high) {
-      current_high = current_meas;
-    } else {
-      current_low = current_meas;
-      hfi_v_act = -1.0f*hfi_v;
-    }
-  #endif
-
-  hfi_high = !hfi_high;
-
-  delta_current.q = current_high.q - current_low.q;
-  delta_current.d = current_high.d - current_low.d;
-
-  if (last_hfi_v != hfi_v || last_Ts != Ts || last_Ld != Ld || last_Lq != Lq)
+  else
   {
-    predivAngleest = 1.0f / (hfi_v * Ts * ( 1.0f / Lq - 1.0f / Ld ) );
-    last_hfi_v = hfi_v;
-    last_Ts = Ts;
-    last_Ld = Ld;
-    last_Lq = Lq;
-    Ts_div = 1.0f / Ts;
+      flux_alpha = flux_alpha + (Ualpha - phase_resistance * ABcurrent.alpha) * Ts -
+            phase_inductance * (ABcurrent.alpha - i_alpha_prev);
+      flux_beta  =  flux_beta  + (Ubeta  - phase_resistance * ABcurrent.beta)  * Ts -
+            phase_inductance * (ABcurrent.beta  - i_beta_prev);
+      if(flux_alpha>flux_linkage){flux_alpha=flux_linkage;}
+      if(flux_alpha<-flux_linkage){flux_alpha=-flux_linkage;}
+      if(flux_beta>flux_linkage){flux_beta=flux_linkage;}
+      if(flux_beta<-flux_linkage){flux_beta=-flux_linkage;}
+      i_alpha_prev=ABcurrent.alpha;
+      i_beta_prev=ABcurrent.beta;
+      flux_observer_angle=_atan2(flux_beta,flux_alpha);
+      if(flux_observer_angle<0){flux_observer_angle+=_2PI;}
+      bemf=(polarity_correction*(voltage.q -phase_resistance * current_meas.q));
+      if(bemf>bemf_threshold || bemf<-bemf_threshold){
+        bemf_count+=2;
+      }
+      else{
+        bemf_count-=2;
+        if(bemf_count<0){bemf_count=0;}
+      }
+      if(bemf_count>100){
+        bemf_count+=1;
+        if(bemf_count>200){bemf_count=200;}
+        hfi_out=flux_observer_angle;
+        hfi_velocity=((bemf*KV_rating*_SQRT3*_2PI)/(60.0f));
+        hfi_out_prev=hfi_out;
+        hfi_v_act=0;
+      }
+      else
+      {
+
+        if (hfi_firstcycle)
+        {
+          hfi_v_act /= 2.0f;
+          hfi_firstcycle = false;
+        }
+
+        
+       #if SWAP_HILO == true 
+          if (hfi_high) {
+            current_low = current_meas;
+          } else {
+            current_high = current_meas;
+            hfi_v_act = -1.0f*hfi_v;
+          }
+        #else
+          if (hfi_high) {
+            current_high = current_meas;
+          } else {
+            current_low = current_meas;
+            hfi_v_act = -1.0f*hfi_v;
+          }
+        #endif
+
+        hfi_high = !hfi_high;
+
+        delta_current.q = current_high.q - current_low.q;
+        delta_current.d = current_high.d - current_low.d;
+
+        if (last_hfi_v != hfi_v || last_Ts != Ts || last_Ld != Ld || last_Lq != Lq)
+          {
+            predivAngleest = 1.0f / (hfi_v * Ts * ( 1.0f / Lq - 1.0f / Ld ) );
+            last_hfi_v = hfi_v;
+            last_Ts = Ts;
+            last_Ld = Ld;
+            last_Lq = Lq;
+            Ts_div = 1.0f / Ts;
+          }
+
+          // hfi_curangleest = delta_current.q / (hfi_v * Ts_L );  // this is about half a us faster than vv
+          // hfi_curangleest =  0.5f * delta_current.q / (hfi_v * Ts * ( 1.0f / Lq - 1.0f / Ld ) );
+          hfi_curangleest =  0.5f * delta_current.q * predivAngleest;
+
+        if (hfi_curangleest > error_saturation_limit)
+          hfi_curangleest = error_saturation_limit;
+        if (hfi_curangleest < -error_saturation_limit)
+          hfi_curangleest = -error_saturation_limit;
+        hfi_error = -hfi_curangleest;
+        hfi_int += Ts * hfi_error * hfi_gain2;           // This the the double integrator
+        hfi_int = _constrain(hfi_int,-Ts*120.0f, Ts*120.0f);
+        hfi_velocity=hfi_int /(Ts*pole_pairs);
+        hfi_out += hfi_gain1 * Ts * hfi_error + hfi_int; // This is the integrator and the double integrator
+      }
+      current_err.q = polarity_correction * current_setpoint.q - current_meas.q;
+      current_err.d = polarity_correction * current_setpoint.d - current_meas.d;
+
+      
+      voltage_pid.q = PID_current_q(current_err.q, Ts, Ts_div);
+      voltage_pid.d = PID_current_d(current_err.d, Ts, Ts_div);
+     
+
+      // lowpass does a += on the first arg
+      LOWPASS(voltage.q, voltage_pid.q, 0.34f);
+      LOWPASS(voltage.d, voltage_pid.d, 0.34f);
+    
+      voltage.d = _constrain(voltage.d ,-voltage_limit, voltage_limit);
+      voltage.q = _constrain(voltage.q ,-voltage_limit, voltage_limit);
+    
+      voltage.d += hfi_v_act;
+      hfi_out_prev = hfi_out;
   }
-  
-  // hfi_curangleest = delta_current.q / (hfi_v * Ts_L );  // this is about half a us faster than vv
-  
-  // hfi_curangleest =  0.5f * delta_current.q / (hfi_v * Ts * ( 1.0f / Lq - 1.0f / Ld ) );
-  hfi_curangleest =  0.5f * delta_current.q * predivAngleest;
 
-  // LOWPASS(hfi_curangleest, 0.5f * delta_current.q / (hfi_v * Ts * ( 1.0f / Lq - 1.0f / Ld ) ), 0.34f);
-  hfi_error = -hfi_curangleest;
-  hfi_int += Ts * hfi_error * hfi_gain2; //This the the double integrator
-  hfi_int = _constrain(hfi_int,-Ts*120.0f, Ts*120.0f);
-  hfi_out += hfi_gain1 * Ts * hfi_error + hfi_int; //This is the integrator and the double integrator
-
-  current_err.q = current_setpoint.q - current_meas.q;
-  current_err.d = current_setpoint.d - current_meas.d;
-
-  voltage_pid.q = PID_current_q(current_err.q, Ts, Ts_div);
-  voltage_pid.d = PID_current_d(current_err.d, Ts, Ts_div);
-
-  // lowpass does a += on the first arg
-  LOWPASS(voltage.q,voltage_pid.q, 0.34f);
-  LOWPASS(voltage.d,voltage_pid.d, 0.34f);
-
-  voltage.d = _constrain(voltage.d ,-voltage_limit, voltage_limit);
-  voltage.q = _constrain(voltage.q ,-voltage_limit, voltage_limit);
-  voltage.d += hfi_v_act;
- 
   // // PMSM decoupling control and BEMF FF
   // stateX->VqFF = stateX->we * ( confX->Ld * stateX->Id_SP + confX->Lambda_m);
   // stateX->VqFF += stateX->Iq_SP * stateX->R ;
@@ -460,15 +553,19 @@ void IRAM_ATTR HFIBLDCMotor::process_hfi(){
     // for hfi at 2x pwm
     driver->setPwm(Ua, Ub, Uc);
   #endif
-
+  if(start_polarity_alignment){
+    return;
+  }
   while (hfi_out < 0) { hfi_out += _2PI;}
 	while (hfi_out >=  _2PI) { hfi_out -= _2PI;}
-  hfi_int = _hfinormalizeAngle(hfi_int);
+  
+  while (hfi_int < -_PI) { hfi_int += _2PI;}
+	while (hfi_int >=  _PI) { hfi_int -= _2PI;}
 
   float d_angle = hfi_out - electrical_angle;
   if(abs(d_angle) > (0.8f*_2PI) ) hfi_full_turns += ( d_angle > 0.0f ) ? -1.0f : 1.0f; 
   electrical_angle = hfi_out;
-  // digitalToggle(PC10);
+// digitalToggle(PC10);
   // digitalToggle(PC10);  
   // digitalToggle(PC10);
   // digitalToggle(PC10);
@@ -555,12 +652,18 @@ void HFIBLDCMotor::move(float new_target) {
   if (hfi_on==true) {
     noInterrupts();
     float tmp_electrical_angle = electrical_angle;
+    float tmp_hfi_int = hfi_int;
     interrupts();
-    float temp_shaft_angle = (hfi_full_turns *_2PI + tmp_electrical_angle)/pole_pairs;
-    unsigned long currentUpdateTime = _micros();
-    shaft_velocity = LPF_velocity(((temp_shaft_angle - shaft_angle)*1000000.0f/(currentUpdateTime - lastUpdateTime))/1);
-    lastUpdateTime = currentUpdateTime;
-    shaft_angle = temp_shaft_angle;
+
+    //float temp_shaft_angle = (hfi_full_turns *_2PI + tmp_electrical_angle)/pole_pairs;
+    //unsigned long currentUpdateTime = _micros();
+    //shaft_velocity = LPF_velocity(((temp_shaft_angle - shaft_angle)*1000000.0f/(currentUpdateTime - lastUpdateTime))/1);
+    //lastUpdateTime = currentUpdateTime;
+    //shaft_angle = temp_shaft_angle;
+    
+    shaft_angle = (hfi_full_turns *_2PI + tmp_electrical_angle)/pole_pairs;
+    //hfi_velocity = tmp_hfi_int /(Ts*pole_pairs);
+
   } else {
     if (!sensor){
       shaft_angle = shaftAngle(); // read value even if motor is disabled to keep the monitoring updated but not in openloop mode
@@ -579,6 +682,7 @@ void HFIBLDCMotor::move(float new_target) {
   if(!current_sense && _isset(phase_resistance)) current.q = (voltage.q - voltage_bemf)/phase_resistance;
   
   float temp_q_setpoint;
+  float tmp_hfi_velocity;
   // upgrade the current based voltage limit
   switch (controller) {
     case MotionControlType::torque:
@@ -604,6 +708,7 @@ void HFIBLDCMotor::move(float new_target) {
       // calculate velocity set point
       temp_q_setpoint = feed_forward_velocity + P_angle( shaft_angle_sp - shaft_angle );
       temp_q_setpoint = _constrain(temp_q_setpoint,-current_limit, current_limit);
+      temp_q_setpoint = LPF_angle(temp_q_setpoint);
       // calculate the torque command - sensor precision: this calculation is ok, but based on bad value from previous calculation
       noInterrupts();
       current_setpoint.q = temp_q_setpoint;
@@ -622,8 +727,12 @@ void HFIBLDCMotor::move(float new_target) {
       // velocity set point - sensor precision: this calculation is numerically precise.
       shaft_velocity_sp = target;
       // calculate the torque command
-      temp_q_setpoint = PID_velocity(shaft_velocity_sp - shaft_velocity); // if current/foc_current torque control
+      noInterrupts();
+      tmp_hfi_velocity=hfi_velocity;
+      interrupts();
+      temp_q_setpoint = PID_velocity(shaft_velocity_sp - tmp_hfi_velocity); // if current/foc_current torque control
       temp_q_setpoint = _constrain(temp_q_setpoint,-current_limit, current_limit);
+      temp_q_setpoint = LPF_velocity(temp_q_setpoint);
       noInterrupts();
       current_setpoint.q = temp_q_setpoint;
       interrupts();
