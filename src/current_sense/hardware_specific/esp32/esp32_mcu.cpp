@@ -152,14 +152,15 @@ static void IRAM_ATTR mcpwm0_isr_handler(void*) __attribute__ ((unused));
 
 // Read currents when interrupt is triggered
 static void IRAM_ATTR mcpwm0_isr_handler(void*){
-  
+  // GPIO.out_w1ts = ((uint32_t)1 << 15);
+
   // high side
   uint32_t mcpwm_intr_status_high = MCPWM0.int_st.timer0_tez_int_st;
 
   // low side
   uint32_t mcpwm_intr_status_low = MCPWM0.int_st.timer0_tep_int_st;
 
-
+  
   bool runadc = mcpwm_intr_status_high || mcpwm_intr_status_low;
 
     if(runadc){
@@ -196,10 +197,14 @@ static void IRAM_ATTR mcpwm0_isr_handler(void*){
 
     #endif
   
-  // low side
-  MCPWM0.int_clr.timer0_tep_int_clr = mcpwm_intr_status_low;
   // high side
   MCPWM0.int_clr.timer0_tez_int_clr = mcpwm_intr_status_high;
+  // low side
+  MCPWM0.int_clr.timer0_tep_int_clr = mcpwm_intr_status_low;
+  delayMicroseconds(0);
+  // GPIO.out_w1tc = ((uint32_t)1 << 15);
+  
+  
 }
 
 static void IRAM_ATTR mcpwm1_isr_handler(void*) __attribute__ ((unused));
@@ -248,11 +253,12 @@ static void IRAM_ATTR mcpwm1_isr_handler(void*){
       portEXIT_CRITICAL_ISR(&fpuInISRMutex);
 
     #endif
-  
-  // low side
-  MCPWM1.int_clr.timer0_tep_int_clr = mcpwm_intr_status_low;
+
   // high side
   MCPWM1.int_clr.timer0_tez_int_clr = mcpwm_intr_status_high;
+  // low side
+  MCPWM1.int_clr.timer0_tep_int_clr = mcpwm_intr_status_low;
+  delayMicroseconds(0);
 }
 
 

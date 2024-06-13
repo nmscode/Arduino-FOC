@@ -71,8 +71,8 @@ void IRAM_ATTR readFiFo()
     CLEAR_PERI_REG_MASK(I2S_CONF_REG(0), I2S_RX_START); // Stop aquisition to buffer
 
     // uint32_t readings[ADC1_CHANNEL_MAX][ADC1_CHANNEL_MAX*BUF_LEN];
-    uint32_t avgreadings[ADC1_CHANNEL_MAX] = {0};
-    uint32_t counts[ADC1_CHANNEL_MAX] = {0};
+    // uint32_t avgreadings[ADC1_CHANNEL_MAX] = {0};
+    // uint32_t counts[ADC1_CHANNEL_MAX] = {0};
     uint32_t fifolen = GET_PERI_REG_BITS2(I2S_FIFO_CONF_REG(0), I2S_RX_DATA_NUM_M, I2S_RX_DATA_NUM_S); // I2S0.fifo_conf.rx_data_num;
     #if DEBUG_ADC
         uint32_t lastrd = 0;
@@ -136,16 +136,16 @@ void IRAM_ATTR readFiFo()
         uint32_t chan = (lowVal >> 12) & 0x07;
         uint32_t adc_value = lowVal & 0xfff;
         // readings[chan][counts[chan]] = adc_value;
-        avgreadings[chan] = adc_value;
+        // avgreadings[chan] = adc_value;
         i2s_adc_buffer[chan] = adc_value;
-        counts[chan]++;
+        // counts[chan]++;
 
         chan = (highVal >> 12) & 0x07;
         adc_value = highVal & 0xfff;
         // readings[chan][counts[chan]] = adc_value;
-        avgreadings[chan] = adc_value;
+        // avgreadings[chan] = adc_value;
         i2s_adc_buffer[chan] = adc_value;
-        counts[chan]++;
+        // counts[chan]++;
     }
 
     I2S0.int_ena.rx_rempty = 0;
