@@ -58,12 +58,9 @@ class HFIBLDCMotor: public FOCMotor
     DQCurrent_s delta_current;
     DQCurrent_s current_setpoint;
 
-    float last_hfi_v = hfi_v;
-    float last_Ts = Ts;
-    float last_Ld = Ld;
-    float last_Lq = Lq;
-    float Ts_div = 1.0f / Ts;
-    float predivAngleest = 1.0f / (hfi_v * Ts * ( 1.0f / Lq - 1.0f / Ld ) );
+    float bemf=0;
+    float flux_observer_angle=0;
+    int bemf_count=0;
 
     void process_hfi();
 
@@ -169,9 +166,17 @@ class HFIBLDCMotor: public FOCMotor
     float i_alpha_prev=0;
     float i_beta_prev=0;
     float hfi_out_prev=0;
-    float bemf=0;
-    float flux_observer_angle=0;
-    int bemf_count=0;
+
+    float last_hfi_v = hfi_v;
+    float last_Ts = Ts;
+    float last_Ld = Ld;
+    float last_Lq = Lq;
+    int last_pp = pole_pairs;
+    float Ts_pp_div = 1.0f / (Ts * pole_pairs);
+    float Ts_div = 1.0f / Ts;
+    float predivAngleest = 1.0f / (hfi_v * Ts * ( 1.0f / Lq - 1.0f / Ld ) );
+
+
 };
 
 

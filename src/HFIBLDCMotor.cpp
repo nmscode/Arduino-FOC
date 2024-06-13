@@ -373,8 +373,11 @@ void IRAM_ATTR HFIBLDCMotor::process_hfi(){
     driver->disable();
     return;
   }
+
   hfi_v_act = hfi_v;
-  if(start_polarity_alignment){
+
+  if(start_polarity_alignment)
+  {
     if(polarity_counter<polarity_cycles){
       voltage.d=0;
       voltage.q=0;
@@ -409,110 +412,116 @@ void IRAM_ATTR HFIBLDCMotor::process_hfi(){
       return;
     }
     polarity_counter+=1;
-  }
 
-  else
+  }else // not align
   {
-      flux_alpha = flux_alpha + (Ualpha - phase_resistance * ABcurrent.alpha) * Ts -
-            phase_inductance * (ABcurrent.alpha - i_alpha_prev);
-      flux_beta  =  flux_beta  + (Ubeta  - phase_resistance * ABcurrent.beta)  * Ts -
-            phase_inductance * (ABcurrent.beta  - i_beta_prev);
-      if(flux_alpha>flux_linkage){flux_alpha=flux_linkage;}
-      if(flux_alpha<-flux_linkage){flux_alpha=-flux_linkage;}
-      if(flux_beta>flux_linkage){flux_beta=flux_linkage;}
-      if(flux_beta<-flux_linkage){flux_beta=-flux_linkage;}
-      i_alpha_prev=ABcurrent.alpha;
-      i_beta_prev=ABcurrent.beta;
-      flux_observer_angle=_atan2(flux_beta,flux_alpha);
-      if(flux_observer_angle<0){flux_observer_angle+=_2PI;}
-      bemf=(polarity_correction*(voltage.q -phase_resistance * current_meas.q));
-      if(bemf>bemf_threshold || bemf<-bemf_threshold){
-        bemf_count+=2;
-      }
-      else{
-        bemf_count-=2;
-        if(bemf_count<0){bemf_count=0;}
-      }
-      if(bemf_count>100){
-        bemf_count+=1;
-        if(bemf_count>200){bemf_count=200;}
-        hfi_out=flux_observer_angle;
-        hfi_velocity=((bemf*KV_rating*_SQRT3*_2PI)/(60.0f));
-        hfi_out_prev=hfi_out;
-        hfi_v_act=0;
-      }
-      else
+    flux_alpha = flux_alpha + (Ualpha - phase_resistance * ABcurrent.alpha) * Ts - phase_inductance * (ABcurrent.alpha - i_alpha_prev);
+    flux_beta  =  flux_beta  + (Ubeta  - phase_resistance * ABcurrent.beta)  * Ts - phase_inductance * (ABcurrent.beta  - i_beta_prev);
+    
+    if(flux_alpha>flux_linkage) {flux_alpha=flux_linkage;}
+    if(flux_alpha<-flux_linkage) {flux_alpha=-flux_linkage;}
+    if(flux_beta>flux_linkage) {flux_beta=flux_linkage;}
+    if(flux_beta<-flux_linkage) {flux_beta=-flux_linkage;}
+    
+    i_alpha_prev=ABcurrent.alpha;
+    i_beta_prev=ABcurrent.beta;
+
+    flux_observer_angle=_atan2(flux_beta,flux_alpha);
+    if(flux_observer_angle<0) {flux_observer_angle+=_2PI;}
+    
+    bemf=(polarity_correction*(voltage.q -phase_resistance * current_meas.q));
+    
+    if(bemf>bemf_threshold || bemf<-bemf_threshold){
+      bemf_count+=2;
+    }else{
+      bemf_count-=2;
+      if(bemf_count<0) {bemf_count=0;}
+    }
+
+
+    if(bemf_count>100){ // use flux observer after 
+      bemf_count+=1;
+      if(bemf_count>200){bemf_count=200;}
+      hfi_out=flux_observer_angle;
+      hfi_velocity=((bemf*KV_rating*_SQRT3*_2PI)/(60.0f));
+      hfi_out_prev=hfi_out;
+      hfi_v_act=0;
+    }else // do hfi
+    {
+
+      if (hfi_firstcycle)
       {
-
-        if (hfi_firstcycle)
-        {
-          hfi_v_act /= 2.0f;
-          hfi_firstcycle = false;
-        }
-
-        
-       #if SWAP_HILO == true 
-          if (hfi_high) {
-            current_low = current_meas;
-          } else {
-            current_high = current_meas;
-            hfi_v_act = -1.0f*hfi_v;
-          }
-        #else
-          if (hfi_high) {
-            current_high = current_meas;
-          } else {
-            current_low = current_meas;
-            hfi_v_act = -1.0f*hfi_v;
-          }
-        #endif
-
-        hfi_high = !hfi_high;
-
-        delta_current.q = current_high.q - current_low.q;
-        delta_current.d = current_high.d - current_low.d;
-
-        if (last_hfi_v != hfi_v || last_Ts != Ts || last_Ld != Ld || last_Lq != Lq)
-          {
-            predivAngleest = 1.0f / (hfi_v * Ts * ( 1.0f / Lq - 1.0f / Ld ) );
-            last_hfi_v = hfi_v;
-            last_Ts = Ts;
-            last_Ld = Ld;
-            last_Lq = Lq;
-            Ts_div = 1.0f / Ts;
-          }
-
-          // hfi_curangleest = delta_current.q / (hfi_v * Ts_L );  // this is about half a us faster than vv
-          // hfi_curangleest =  0.5f * delta_current.q / (hfi_v * Ts * ( 1.0f / Lq - 1.0f / Ld ) );
-          hfi_curangleest =  0.5f * delta_current.q * predivAngleest;
-
-        if (hfi_curangleest > error_saturation_limit)
-          hfi_curangleest = error_saturation_limit;
-        if (hfi_curangleest < -error_saturation_limit)
-          hfi_curangleest = -error_saturation_limit;
-        hfi_error = -hfi_curangleest;
-        hfi_int += Ts * hfi_error * hfi_gain2;           // This the the double integrator
-        hfi_int = _constrain(hfi_int,-Ts*120.0f, Ts*120.0f);
-        hfi_velocity=hfi_int /(Ts*pole_pairs);
-        hfi_out += hfi_gain1 * Ts * hfi_error + hfi_int; // This is the integrator and the double integrator
+        hfi_v_act /= 2.0f;
+        hfi_firstcycle = false;
       }
-      current_err.q = polarity_correction * current_setpoint.q - current_meas.q;
-      current_err.d = polarity_correction * current_setpoint.d - current_meas.d;
 
       
-      voltage_pid.q = PID_current_q(current_err.q, Ts, Ts_div);
-      voltage_pid.d = PID_current_d(current_err.d, Ts, Ts_div);
-     
+      #if SWAP_HILO == true 
+        if (hfi_high) {
+          current_low = current_meas;
+        } else {
+          current_high = current_meas;
+          hfi_v_act = -1.0f*hfi_v;
+        }
+      #else
+        if (hfi_high) {
+          current_high = current_meas;
+        } else {
+          current_low = current_meas;
+          hfi_v_act = -1.0f*hfi_v;
+        }
+      #endif
 
-      // lowpass does a += on the first arg
-      LOWPASS(voltage.q, voltage_pid.q, 0.34f);
-      LOWPASS(voltage.d, voltage_pid.d, 0.34f);
+      hfi_high = !hfi_high;
+
+      delta_current.q = current_high.q - current_low.q;
+      delta_current.d = current_high.d - current_low.d;
+
+      if (last_hfi_v != hfi_v || last_Ts != Ts || last_Ld != Ld || last_Lq != Lq || last_pp != pole_pairs)
+        {
+          predivAngleest = 1.0f / (hfi_v * Ts * ( 1.0f / Lq - 1.0f / Ld ) );
+          last_hfi_v = hfi_v;
+          last_Ts = Ts;
+          last_Ld = Ld;
+          last_Lq = Lq;
+          last_pp = pole_pairs;
+          Ts_div = 1.0f / Ts;
+          Ts_pp_div = 1.0f / (Ts * pole_pairs);
+        }
+
+        // hfi_curangleest = delta_current.q / (hfi_v * Ts_L );  // this is about half a us faster than vv
+        // hfi_curangleest =  0.5f * delta_current.q / (hfi_v * Ts * ( 1.0f / Lq - 1.0f / Ld ) );
+        hfi_curangleest =  0.5f * delta_current.q * predivAngleest;
+
+      if (hfi_curangleest > error_saturation_limit)
+        hfi_curangleest = error_saturation_limit;
+      if (hfi_curangleest < -error_saturation_limit)
+        hfi_curangleest = -error_saturation_limit;
+      hfi_error = -hfi_curangleest;
+      hfi_int += Ts * hfi_error * hfi_gain2;           // This the the double integrator
+      // hfi_int = _constrain(hfi_int,-Ts*120.0f, Ts*120.0f);
+      // hfi_velocity=hfi_int /(Ts*pole_pairs);
+      hfi_velocity=hfi_int * Ts_pp_div;
+      hfi_out += hfi_gain1 * Ts * hfi_error + hfi_int; // This is the integrator and the double integrator
+    }
+
+    current_err.q = polarity_correction * current_setpoint.q - current_meas.q;
+    current_err.d = polarity_correction * current_setpoint.d - current_meas.d;
+
     
-      voltage.d = _constrain(voltage.d ,-voltage_limit, voltage_limit);
-      voltage.q = _constrain(voltage.q ,-voltage_limit, voltage_limit);
+    voltage_pid.q = PID_current_q(current_err.q, Ts, Ts_div);
+    voltage_pid.d = PID_current_d(current_err.d, Ts, Ts_div);
     
-      voltage.d += hfi_v_act;
-      hfi_out_prev = hfi_out;
+
+    // lowpass does a += on the first arg
+    LOWPASS(voltage.q, voltage_pid.q, 0.34f);
+    LOWPASS(voltage.d, voltage_pid.d, 0.34f);
+  
+    voltage.d = _constrain(voltage.d ,-voltage_limit, voltage_limit);
+    voltage.q = _constrain(voltage.q ,-voltage_limit, voltage_limit);
+  
+    voltage.d += hfi_v_act;
+    hfi_out_prev = hfi_out;
   }
 
   // // PMSM decoupling control and BEMF FF
