@@ -3,7 +3,7 @@
 #define LOWPASS( output, input, c_lowpass)  (output += (c_lowpass) * ((input) - (output)))
 
 #ifndef SWAP_HILO
-  #define SWAP_HILO true // true for ESP32
+  #define SWAP_HILO false // true for ESP32
 #endif
 extern int** trap_120_map;
 extern int** trap_150_map;
