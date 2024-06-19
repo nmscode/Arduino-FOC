@@ -150,6 +150,8 @@ int  HFIBLDCMotor::initFOC() {
   motor_status = FOCMotorStatus::motor_calibrating;
   polarity_cycles=(int)(3.5*(Ld/phase_resistance)/Ts);
   flux_linkage = 60.0 / ( _sqrt(3) * _PI * (KV_rating) * (pole_pairs * 2));
+  PID_current_d.output_ramp = (20000.0f*0.02f*Ld)/Ts; // A per cycle V=(A*H)/s
+  PID_current_q.output_ramp = (20000.0f*0.05f*Lq)/Ts; // A per cycle
   // align motor if necessary
   // alignment necessary for encoders!
   // sensor and motor alignment - can be skipped
@@ -331,7 +333,9 @@ void IRAM_ATTR HFIBLDCMotor::process_hfi(){
   if (hfi_on == false || enabled==0) {
     hfi_firstcycle=true;
     hfi_int=0;
-    hfi_out=0;
+    hfi_acc=0;
+    sensorless_out=0;
+    hfi_angle=0;
     hfi_full_turns=0;
     return;
   }
@@ -430,24 +434,30 @@ void IRAM_ATTR HFIBLDCMotor::process_hfi(){
     if(flux_observer_angle<0) {flux_observer_angle+=_2PI;}
     
     bemf=(polarity_correction*(voltage.q -phase_resistance * current_meas.q));
-    
+    flux_observer_velocity=((bemf*KV_rating*_SQRT3*_2PI)/(60.0f));
+
     if(bemf>bemf_threshold || bemf<-bemf_threshold){
       bemf_count+=2;
     }else{
       bemf_count-=2;
       if(bemf_count<0) {bemf_count=0;}
     }
-
-
     if(bemf_count>100){ // use flux observer after 
       bemf_count+=1;
       if(bemf_count>200){bemf_count=200;}
-      hfi_out=flux_observer_angle;
-      hfi_velocity=((bemf*KV_rating*_SQRT3*_2PI)/(60.0f));
-      hfi_out_prev=hfi_out;
+    }
+
+    if(bemf_count>102){
+      // sensorless_out=flux_observer_angle;
+      // sensorless_velocity = flux_observer_velocity;
       hfi_v_act=0;
     }else // do hfi
     {
+      if(usedFOlast==true){
+        usedFOlast=false;
+        hfi_int = flux_observer_velocity * pole_pairs * Ts;
+        hfi_angle = flux_observer_angle;
+      }
 
       if (hfi_firstcycle)
       {
@@ -498,11 +508,24 @@ void IRAM_ATTR HFIBLDCMotor::process_hfi(){
       if (hfi_curangleest < -error_saturation_limit)
         hfi_curangleest = -error_saturation_limit;
       hfi_error = -hfi_curangleest;
-      hfi_int += Ts * hfi_error * hfi_gain2;           // This the the double integrator
+
+      hfi_acc += Ts * hfi_error * hfi_gain3;                // This the the triple integrator (acceleration) 
+      hfi_int += Ts * hfi_error * hfi_gain2 + hfi_acc;      // This the the double integrator (velocity)
       // hfi_int = _constrain(hfi_int,-Ts*120.0f, Ts*120.0f);
       // hfi_velocity=hfi_int /(Ts*pole_pairs);
       hfi_velocity=hfi_int * Ts_pp_div;
-      hfi_out += hfi_gain1 * Ts * hfi_error + hfi_int; // This is the integrator and the double integrator
+      hfi_angle += hfi_gain1 * Ts * hfi_error + hfi_int;    // This is the integrator and the double&triple integrator
+
+      while (hfi_angle < 0) { hfi_angle += _2PI;}
+	    while (hfi_angle >=  _2PI) { hfi_angle -= _2PI;}
+      while (hfi_int < -_PI) { hfi_int += _2PI;}
+	    while (hfi_int >=  _PI) { hfi_int -= _2PI;}
+      while (hfi_acc < -_PI) { hfi_acc += _2PI;}
+	    while (hfi_acc >=  _PI) { hfi_acc -= _2PI;}
+
+      // sensorless_out = hfi_angle;
+      // sensorless_velocity = hfi_velocity;
+      hfi_angle_prev = hfi_angle;
     }
 
     current_err.q = polarity_correction * current_setpoint.q - current_meas.q;
@@ -521,7 +544,19 @@ void IRAM_ATTR HFIBLDCMotor::process_hfi(){
     voltage.q = _constrain(voltage.q ,-voltage_limit, voltage_limit);
   
     voltage.d += hfi_v_act;
-    hfi_out_prev = hfi_out;
+
+    if (bemf_count < 100)
+    {
+      sensorless_out = hfi_angle;
+      sensorless_velocity = hfi_velocity;
+    }else
+    {
+      sensorless_out = flux_observer_angle;
+      sensorless_velocity = flux_observer_velocity;
+      usedFOlast = true;
+    }
+    
+    sensorless_out_prev = sensorless_out;
   }
 
   // // PMSM decoupling control and BEMF FF
@@ -565,15 +600,12 @@ void IRAM_ATTR HFIBLDCMotor::process_hfi(){
   if(start_polarity_alignment){
     return;
   }
-  while (hfi_out < 0) { hfi_out += _2PI;}
-	while (hfi_out >=  _2PI) { hfi_out -= _2PI;}
-  
-  while (hfi_int < -_PI) { hfi_int += _2PI;}
-	while (hfi_int >=  _PI) { hfi_int -= _2PI;}
+  // while (sensorless_out < 0) { sensorless_out += _2PI;}
+	// while (sensorless_out >=  _2PI) { sensorless_out -= _2PI;}
 
-  float d_angle = hfi_out - electrical_angle;
+  float d_angle = sensorless_out - electrical_angle;
   if(abs(d_angle) > (0.8f*_2PI) ) hfi_full_turns += ( d_angle > 0.0f ) ? -1.0f : 1.0f; 
-  electrical_angle = hfi_out;
+  electrical_angle = sensorless_out;
 // digitalToggle(PC10);
   // digitalToggle(PC10);  
   // digitalToggle(PC10);
@@ -691,7 +723,7 @@ void HFIBLDCMotor::move(float new_target) {
   if(!current_sense && _isset(phase_resistance)) current.q = (voltage.q - voltage_bemf)/phase_resistance;
   
   float temp_q_setpoint;
-  float tmp_hfi_velocity;
+  float tmp_sensorless_velocity;
   // upgrade the current based voltage limit
   switch (controller) {
     case MotionControlType::torque:
@@ -737,9 +769,9 @@ void HFIBLDCMotor::move(float new_target) {
       shaft_velocity_sp = target;
       // calculate the torque command
       noInterrupts();
-      tmp_hfi_velocity=hfi_velocity;
+      tmp_sensorless_velocity=sensorless_velocity;
       interrupts();
-      temp_q_setpoint = PID_velocity(shaft_velocity_sp - tmp_hfi_velocity); // if current/foc_current torque control
+      temp_q_setpoint = PID_velocity(shaft_velocity_sp - tmp_sensorless_velocity); // if current/foc_current torque control
       temp_q_setpoint = _constrain(temp_q_setpoint,-current_limit, current_limit);
       temp_q_setpoint = LPF_velocity(temp_q_setpoint);
       noInterrupts();
