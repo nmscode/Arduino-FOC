@@ -446,18 +446,12 @@ void _writeDutyCycle6PWM(float dc_a,  float dc_b, float dc_c, PhaseState *phase_
         _UNUSED(phase_state);
       #else                           
         float deadtime = 0.5f*((ESP32MCPWMDriverParams*)params)->deadtime;
-        ((ESP32MCPWMDriverParams *)params)->mcpwm_dev->operators[0].timestamp[0].gen = ((ESP32MCPWMDriverParams *)params)->mcpwm_dev -> timer[0].timer_cfg0.timer_period * ((phase_state[0] == PHASE_ON || phase_state[0] == PHASE_HI) ? _constrain(dc_a-deadtime, 0.0f, 1.0f) : 0);
-        ((ESP32MCPWMDriverParams *)params)->mcpwm_dev->operators[0].timestamp[1].gen = ((ESP32MCPWMDriverParams *)params)->mcpwm_dev -> timer[0].timer_cfg0.timer_period * ((phase_state[0] == PHASE_ON || phase_state[0] == PHASE_HI) ? _constrain(dc_a+deadtime, 0.0f, 1.0f) : 0);
-        ((ESP32MCPWMDriverParams *)params)->mcpwm_dev->operators[1].timestamp[0].gen = ((ESP32MCPWMDriverParams *)params)->mcpwm_dev -> timer[0].timer_cfg0.timer_period * ((phase_state[0] == PHASE_ON || phase_state[0] == PHASE_HI) ? _constrain(dc_b-deadtime, 0.0f, 1.0f) : 0);
-        ((ESP32MCPWMDriverParams *)params)->mcpwm_dev->operators[1].timestamp[1].gen = ((ESP32MCPWMDriverParams *)params)->mcpwm_dev -> timer[0].timer_cfg0.timer_period * ((phase_state[0] == PHASE_ON || phase_state[0] == PHASE_HI) ? _constrain(dc_b+deadtime, 0.0f, 1.0f) : 0);
-        ((ESP32MCPWMDriverParams *)params)->mcpwm_dev->operators[2].timestamp[0].gen = ((ESP32MCPWMDriverParams *)params)->mcpwm_dev -> timer[0].timer_cfg0.timer_period * ((phase_state[0] == PHASE_ON || phase_state[0] == PHASE_HI) ? _constrain(dc_c-deadtime, 0.0f, 1.0f) : 0);
-        ((ESP32MCPWMDriverParams *)params)->mcpwm_dev->operators[2].timestamp[1].gen = ((ESP32MCPWMDriverParams *)params)->mcpwm_dev -> timer[0].timer_cfg0.timer_period * ((phase_state[0] == PHASE_ON || phase_state[0] == PHASE_HI) ? _constrain(dc_c+deadtime, 0.0f, 1.0f) : 0);
-        // mcpwm_set_duty(((ESP32MCPWMDriverParams*)params)->mcpwm_unit, MCPWM_TIMER_0, MCPWM_OPR_A, (phase_state[0] == PHASE_ON || phase_state[0] == PHASE_HI) ? _constrain(dc_a-deadtime, 0.0f, 1.0f) * 100.0f : 0);
-        // mcpwm_set_duty(((ESP32MCPWMDriverParams*)params)->mcpwm_unit, MCPWM_TIMER_0, MCPWM_OPR_B, (phase_state[0] == PHASE_ON || phase_state[0] == PHASE_LO) ? _constrain(dc_a+deadtime, 0.0f, 1.0f) * 100.0f : 100.0f);
-        // mcpwm_set_duty(((ESP32MCPWMDriverParams*)params)->mcpwm_unit, MCPWM_TIMER_1, MCPWM_OPR_A, (phase_state[1] == PHASE_ON || phase_state[1] == PHASE_HI) ? _constrain(dc_b-deadtime, 0.0f, 1.0f) * 100.0f : 0);
-        // mcpwm_set_duty(((ESP32MCPWMDriverParams*)params)->mcpwm_unit, MCPWM_TIMER_1, MCPWM_OPR_B, (phase_state[1] == PHASE_ON || phase_state[1] == PHASE_LO) ? _constrain(dc_b+deadtime, 0.0f, 1.0f) * 100.0f : 100.0f);
-        // mcpwm_set_duty(((ESP32MCPWMDriverParams*)params)->mcpwm_unit, MCPWM_TIMER_2, MCPWM_OPR_A, (phase_state[2] == PHASE_ON || phase_state[2] == PHASE_HI) ? _constrain(dc_c-deadtime, 0.0f, 1.0f) * 100.0f : 0);
-        // mcpwm_set_duty(((ESP32MCPWMDriverParams*)params)->mcpwm_unit, MCPWM_TIMER_2, MCPWM_OPR_B, (phase_state[2] == PHASE_ON || phase_state[2] == PHASE_LO) ? _constrain(dc_c+deadtime, 0.0f, 1.0f) * 100.0f : 100.0f);
+        mcpwm_set_duty(((ESP32MCPWMDriverParams*)params)->mcpwm_unit, MCPWM_TIMER_0, MCPWM_OPR_A, (phase_state[0] == PHASE_ON || phase_state[0] == PHASE_HI) ? _constrain(dc_a-deadtime, 0.0f, 1.0f) * 100.0f : 0);
+        mcpwm_set_duty(((ESP32MCPWMDriverParams*)params)->mcpwm_unit, MCPWM_TIMER_0, MCPWM_OPR_B, (phase_state[0] == PHASE_ON || phase_state[0] == PHASE_LO) ? _constrain(dc_a+deadtime, 0.0f, 1.0f) * 100.0f : 100.0f);
+        mcpwm_set_duty(((ESP32MCPWMDriverParams*)params)->mcpwm_unit, MCPWM_TIMER_1, MCPWM_OPR_A, (phase_state[1] == PHASE_ON || phase_state[1] == PHASE_HI) ? _constrain(dc_b-deadtime, 0.0f, 1.0f) * 100.0f : 0);
+        mcpwm_set_duty(((ESP32MCPWMDriverParams*)params)->mcpwm_unit, MCPWM_TIMER_1, MCPWM_OPR_B, (phase_state[1] == PHASE_ON || phase_state[1] == PHASE_LO) ? _constrain(dc_b+deadtime, 0.0f, 1.0f) * 100.0f : 100.0f);
+        mcpwm_set_duty(((ESP32MCPWMDriverParams*)params)->mcpwm_unit, MCPWM_TIMER_2, MCPWM_OPR_A, (phase_state[2] == PHASE_ON || phase_state[2] == PHASE_HI) ? _constrain(dc_c-deadtime, 0.0f, 1.0f) * 100.0f : 0);
+        mcpwm_set_duty(((ESP32MCPWMDriverParams*)params)->mcpwm_unit, MCPWM_TIMER_2, MCPWM_OPR_B, (phase_state[2] == PHASE_ON || phase_state[2] == PHASE_LO) ? _constrain(dc_c+deadtime, 0.0f, 1.0f) * 100.0f : 100.0f);
       #endif
 }
 
