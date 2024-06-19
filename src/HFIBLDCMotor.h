@@ -21,6 +21,7 @@ class HFIBLDCMotor: public FOCMotor
 
     float hfi_gain1 = 750.0f * _2PI;
     float hfi_gain2 = 5.0f * _2PI;
+    float hfi_gain3 = 0.00f * _2PI;
 
     bool hfi_firstcycle = true;
     bool hfi_on = false;
@@ -31,12 +32,16 @@ class HFIBLDCMotor: public FOCMotor
     float hfi_curangleest = 0;
     float hfi_error = 0;
     float hfi_int;
-    float hfi_out;
+    float hfi_acc;
+    float sensorless_out;
+    float hfi_angle;
     float hfi_full_turns=0;
     
     unsigned long lastUpdateTime = _micros();
 
     float hfi_velocity;
+    float flux_observer_velocity;
+    float sensorless_velocity;
     float error_saturation_limit = 0.30f;
 
     float ocp_protection_limit=10;
@@ -165,8 +170,9 @@ class HFIBLDCMotor: public FOCMotor
     float flux_linkage, flux_alpha,flux_beta;
     float i_alpha_prev=0;
     float i_beta_prev=0;
-    float hfi_out_prev=0;
-
+    float sensorless_out_prev=0;
+    float hfi_angle_prev = 0;
+    boolean usedFOlast;
     float last_hfi_v = hfi_v;
     float last_Ts = Ts;
     float last_Ld = Ld;
@@ -175,7 +181,6 @@ class HFIBLDCMotor: public FOCMotor
     float Ts_pp_div = 1.0f / (Ts * pole_pairs);
     float Ts_div = 1.0f / Ts;
     float predivAngleest = 1.0f / (hfi_v * Ts * ( 1.0f / Lq - 1.0f / Ld ) );
-
 
 };
 
