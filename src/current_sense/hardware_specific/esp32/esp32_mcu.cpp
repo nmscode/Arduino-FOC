@@ -161,7 +161,7 @@ static void IRAM_ATTR mcpwm0_isr_handler(void*){
   uint32_t mcpwm_intr_status_low = MCPWM0.int_st.timer0_tep_int_st;
 
   
-  bool runadc = mcpwm_intr_status_high || mcpwm_intr_status_low;
+  bool runadc = mcpwm_intr_status_low;//mcpwm_intr_status_high || mcpwm_intr_status_low;
 
     if(runadc){
       #if _I2S_ADC == true
@@ -218,7 +218,7 @@ static void IRAM_ATTR mcpwm1_isr_handler(void*){
   uint32_t mcpwm_intr_status_low = MCPWM1.int_st.timer0_tep_int_st;
 
 
-  bool runadc = mcpwm_intr_status_high || mcpwm_intr_status_low;
+  bool runadc =mcpwm_intr_status_low;// mcpwm_intr_status_high || mcpwm_intr_status_low;
   
     if(runadc){
       #if _I2S_ADC == true

@@ -592,6 +592,13 @@ void IRAM_ATTR HFIBLDCMotor::process_hfi(){
   Ua += center;
   Ub += center;
   Uc += center;
+
+  if (deadtime_compensation > 0){
+    center = driver->voltage_limit/2;
+    Ua += (Ua > center ? 1:-1) * deadtime_compensation;
+    Ub += (Ub > center ? 1:-1) * deadtime_compensation;
+    Uc += (Uc > center ? 1:-1) * deadtime_compensation;
+  }
   // Serial.printf(">hfiV:%f\n", Ua);
   #ifdef HFI_2XPWM
     // for hfi at 2x pwm

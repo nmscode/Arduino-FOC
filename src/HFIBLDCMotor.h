@@ -56,6 +56,7 @@ class HFIBLDCMotor: public FOCMotor
     float polarity_detection=0;
     float polarity_alignment_voltage=0.5;
     float bemf_threshold=5;
+    float deadtime_compensation=0.0;
 
     DQCurrent_s current_meas;
     DQCurrent_s current_high;

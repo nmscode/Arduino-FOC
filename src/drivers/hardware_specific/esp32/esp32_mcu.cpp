@@ -5,7 +5,7 @@
 #include <soc/mcpwm_struct.h>
 
 #ifndef SIMPLEFOC_ESP32_HW_DEADTIME
-  #define SIMPLEFOC_ESP32_HW_DEADTIME true // TODO: Change to false when sw-deadtime & phase_state is approved ready for general use.
+  #define SIMPLEFOC_ESP32_HW_DEADTIME false // TODO: Change to false when sw-deadtime & phase_state is approved ready for general use.
 #endif
 
 // define bldc motor slots array
