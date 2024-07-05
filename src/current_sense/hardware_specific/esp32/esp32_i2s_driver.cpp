@@ -275,7 +275,7 @@ void* IRAM_ATTR _configureI2S(const bool lowside, const void* driver_params, con
   if( _isset(pinA) ) channels[digitalPinToAnalogChannel(pinA)] = 1; // pinMode(pinA, GPIO_MODE_DISABLE);
   if( _isset(pinB) ) channels[digitalPinToAnalogChannel(pinB)] = 1; // pinMode(pinB, GPIO_MODE_DISABLE);
   if( _isset(pinC) ) channels[digitalPinToAnalogChannel(pinC)] = 1; // pinMode(pinC, GPIO_MODE_DISABLE);
-
+  channels[digitalPinToAnalogChannel(34)] = 1;
   int activeChannels = 0;
   u_int some_channel = 0;
   for (int i = 0; i < ADC1_CHANNEL_MAX; i++)
